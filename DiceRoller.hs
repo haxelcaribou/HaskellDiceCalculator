@@ -15,7 +15,7 @@ operatorSymbols = ['+', '-', '*', '/', '^']
 operatorLetters :: [Char]
 operatorLetters = ['d', 'b', 't']
 
--- operatorPrecedence :: (Char, (Int, Bool)) -- why does this not work???
+operatorPrecedence :: [(Char, (Int, Bool))]
 operatorPrecedence =
   [ ('+', (1, True)),
     ('-', (1, True)),
@@ -109,6 +109,10 @@ parsePrattLED all@(x : xs) tree prec = case x of
 parse :: [Token] -> Tree
 parse x = snd $ parsePrattNUD x 0
 
+fac :: Double -> Double
+fac 0 = 1
+fac x = x * fac (x - 1)
+
 applyOperator :: Char -> [Double] -> Double
 applyOperator _ [] = error "too few operands"
 applyOperator _ (a : b : c : xs) = error "too many operands"
@@ -120,7 +124,10 @@ applyOperator o [a, b]
   | o == '^' = a ** b
   | otherwise = error "unknown operator"
 applyOperator o [a]
+  | o == '+' = a
+  | o == '-' = -a
   | o == '~' = -a
+  | o == '!' = fac a
   | otherwise = error "unknown unary operator"
 
 applyFunction :: String -> [Double] -> Double
