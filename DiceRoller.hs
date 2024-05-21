@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
 {-# HLINT ignore "Use first" #-}
 {-# HLINT ignore "Use second" #-}
 
@@ -7,7 +8,10 @@ data Token = Operator Char | Function String | Number Double | StartParen | Comm
 data Tree = Branch Token [Tree] | Leaf Token deriving (Show, Eq)
 
 -- TODO:
---   add unary operator support
+--  add dice rolls
+--  add mod (%)
+--  add unary operator support
+--  multiple Number types for better precision? this is probably a bad idea
 
 operatorSymbols :: [Char]
 operatorSymbols = ['+', '-', '*', '/', '^']
@@ -21,6 +25,7 @@ operatorPrecedence =
     ('-', (1, True)),
     ('*', (2, True)),
     ('/', (2, True)),
+    -- ('%', (2, True)),
     ('^', (3, False)),
     (' ', (0, False))
   ]
@@ -73,8 +78,8 @@ parsePrattParens l = case head $ fst recPratt of
 parsePrattArguments :: [Token] -> [Tree] -> ([Token], [Tree])
 parsePrattArguments [] a = error "unmatched parentheses"
 parsePrattArguments l a = case head $ fst recPratt of
-  Comma -> parsePrattArguments (tail (fst recPratt)) $ snd recPratt : a
-  EndParen -> (tail (fst recPratt), snd recPratt : a)
+  Comma -> parsePrattArguments (tail (fst recPratt)) $ a ++ [snd recPratt]
+  EndParen -> (tail (fst recPratt), a ++ [snd recPratt])
   _ -> error "unmatched parentheses"
   where
     recPratt = parsePrattNUD l 0
@@ -133,11 +138,39 @@ applyOperator o [a]
 applyFunction :: String -> [Double] -> Double
 applyFunction o []
   | o == "pi" = pi
+  | o == "e" = exp 1
   | otherwise = error "unknown constant"
-applyFunction o (x : xs)
-  | o == "min" = foldl min x xs
-  | o == "max" = foldl max x xs
-  | o == "abs" && null xs = abs x
+applyFunction o [x]
+  | o == "negate" = negate x
+  | o == "abs" = abs x
+  | o == "sign" = signum x
+  | o == "round" = fromIntegral $ round x
+  | o == "trunc" = fromIntegral $ truncate x
+  | o == "floor" = fromIntegral $ floor x
+  | o == "ceil" = fromIntegral $ ceiling x
+  | o == "exp" = exp x
+  | o == "sqrt" = sqrt x
+  | o == "ln" = log x
+  | o == "log" = logBase 10 x
+  | o == "fac" = fac x
+  | o == "sin" = sin x
+  | o == "tan" = tan x
+  | o == "cos" = cos x
+  | o == "asin" = asin x
+  | o == "atan" = atan x
+  | o == "acos" = acos x
+applyFunction o [a, b]
+  | o == "add" = a + b
+  | o == "sub" = a - b
+  | o == "mult" = a * b
+  | o == "div" = a / b
+  | o == "pow" = a ** b
+  | o == "log" = logBase b a
+applyFunction o l@(x : xs)
+  | o == "sum" = sum l
+  | o == "prod" = product l
+  | o == "min" = minimum l
+  | o == "max" = maximum l
   | otherwise = error "unknown function"
 
 evaluate :: Tree -> Double
