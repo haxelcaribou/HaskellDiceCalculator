@@ -1,13 +1,12 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
 {-# HLINT ignore "Use first" #-}
 {-# HLINT ignore "Use second" #-}
+
 data Token = Operator Char | Function String | Number Double | StartParen | Comma | EndParen deriving (Show, Eq)
 
 data Tree = Branch Token [Tree] | Leaf Token deriving (Show, Eq)
 
--- TODO: add operator precedance
---   add funtion support
+-- TODO:
 --   add unary operator support
 
 operatorSymbols :: [Char]
@@ -62,66 +61,6 @@ tokenize l@(c : cs)
   | c `elem` '.' : digits = let (f, s) = pullDouble "" l in Number f : tokenize s
   | c == ' ' = tokenize cs
   | otherwise = []
-
-popOperators :: [Token] -> [Token] -> Char -> ([Token], [Token])
-popOperators result [] _ = (result, [])
-popOperators result all@(token : remaining) operator
-  | (Operator o) <- token =
-      let tp = fst (getFromDict operatorPrecedence operator)
-          xp = fst (getFromDict operatorPrecedence o)
-          ta = snd (getFromDict operatorPrecedence operator)
-       in if tp < xp || (tp == xp && ta) then popOperators (token : result) remaining operator else (result, all)
-  | otherwise = (result, all)
-
-popUntilStartParen :: [Token] -> [Token] -> ([Token], [Token])
-popUntilStartParen result [] = (result, [])
-popUntilStartParen result all@(token : remaining)
-  | StartParen <- token = (result, all)
-  | otherwise = popUntilStartParen (token : result) remaining
-
-parseShunting :: [Token] -> [Token] -> [Token]
-parseShunting [] stack = stack
-parseShunting all@(token : remaining) stack
-  | (Number _) <- token = token : parseShunting remaining stack
-  | (Function _) <- token = parseShunting remaining $ token : stack
-  | Comma <- token = let p = popUntilStartParen [] stack in fst p ++ parseShunting remaining (snd p)
-  | (Operator o) <- token = let p = popOperators [] stack o in fst p ++ parseShunting remaining (token : snd p)
-  | StartParen <- token = parseShunting remaining $ token : stack
-  | EndParen <- token = let p = popUntilStartParen [] stack in fst p ++ parseShunting remaining (tail (snd p))
-
-parsePratt :: [Token] -> Int -> [Token] -> ([Token], [Token])
-parsePratt [] p result = (result, [])
-parsePratt all@(x : xs) lp result
-  | (Number _) <- x = parsePratt xs lp [x]
-  | StartParen <- x = parsePratt xs 0 []
-  | (Operator o) <- x = parsePratt' all lp result
-  | otherwise = (result, all)
-
-parsePratt' :: [Token] -> Int -> [Token] -> ([Token], [Token])
-parsePratt' [] lp result = (result, [])
-parsePratt' all@(x : xs) lp result
-  | (Operator o) <- x =
-      let op = fst (getFromDict operatorPrecedence o)
-       in if op > lp
-            then let r = parsePratt xs op [] in parsePratt' (snd r) lp $ result ++ fst r ++ [x]
-            else (result, all)
-  | otherwise = (result, all)
-
-parse :: [Token] -> [Token]
--- parse x = parseShunting x []
-parse x = fst $ parsePratt x 0 []
-
-isStartParen :: Token -> Bool
-isStartParen StartParen = True
-isStartParen _ = False
-
-isEndParen :: Token -> Bool
-isEndParen EndParen = True
-isEndParen _ = False
-
-isComma :: Token -> Bool
-isComma Comma = True
-isComma _ = False
 
 parsePrattParens :: [Token] -> ([Token], Tree)
 parsePrattParens [] = error "unmatched parentheses"
@@ -202,22 +141,6 @@ evaluateTree (Branch x l) = case x of
   Operator c -> applyOperator c $ map evaluateTree l
   Function s -> applyFunction s $ map evaluateTree l
   _ -> error "bad input"
-
-evaluateList :: [Token] -> [Double] -> Double
-evaluateList [] [] = 0
-evaluateList [] [s] = s
-evaluateList [] (s : ss) = error "bad input"
-evaluateList l@(t : ts) []
-  | (Number x) <- t = evaluateList ts [x]
-  | otherwise = error "bad input"
-evaluateList l@(t@(Operator x) : ts) stack@(a : b : ss) = evaluateList ts $ applyOperator x [b, a] : ss
-evaluateList l@(t : ts) stack@(a : ss)
-  | (Number x) <- t = evaluateList ts $ x : stack
-  -- \| (Operator x) <- t = evaluate ts $ applyOperator x [a] : ss
-  | otherwise = error "bad input"
-
-evaluate :: [Token] -> Double
-evaluate x = evaluateList x []
 
 calc :: String -> Double
 calc s = evaluateTree $ parseTree $ tokenize s
