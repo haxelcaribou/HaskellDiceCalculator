@@ -64,20 +64,20 @@ tokenize l@(c : cs)
 
 parsePrattParens :: [Token] -> ([Token], Tree)
 parsePrattParens [] = error "unmatched parentheses"
-parsePrattParens all@(x : xs) = case head $ fst recPratt of
+parsePrattParens l = case head $ fst recPratt of
   EndParen -> (tail (fst recPratt), snd recPratt)
   _ -> error "unmatched parentheses"
   where
-    recPratt = parsePrattTreeNUD all 0
+    recPratt = parsePrattNUD l 0
 
 parsePrattArguments :: [Token] -> [Tree] -> ([Token], [Tree])
 parsePrattArguments [] a = error "unmatched parentheses"
-parsePrattArguments all@(x : xs) a = case head $ fst recPratt of
+parsePrattArguments l a = case head $ fst recPratt of
   Comma -> parsePrattArguments (tail (fst recPratt)) $ snd recPratt : a
   EndParen -> (tail (fst recPratt), snd recPratt : a)
   _ -> error "unmatched parentheses"
   where
-    recPratt = parsePrattTreeNUD all 0
+    recPratt = parsePrattNUD l 0
 
 parsePrattFunction :: Token -> [Token] -> ([Token], Tree)
 parsePrattFunction f [] = ([], Branch f [])
@@ -85,29 +85,29 @@ parsePrattFunction f all@(x : xs) = case x of
   StartParen -> let recPratt = parsePrattArguments xs [] in (fst recPratt, Branch f $ snd recPratt)
   _ -> (all, Branch f [])
 
-parsePrattTreeNUD :: [Token] -> Int -> ([Token], Tree)
-parsePrattTreeNUD [] prec = error "empty parser input"
-parsePrattTreeNUD all@(x : xs) prec = case x of
-  Number _ -> parsePrattTreeLED xs (Leaf x) prec
-  Function _ -> let recPratt = parsePrattFunction x xs in uncurry parsePrattTreeLED recPratt prec
+parsePrattNUD :: [Token] -> Int -> ([Token], Tree)
+parsePrattNUD [] prec = error "empty parser input"
+parsePrattNUD (x : xs) prec = case x of
+  Number _ -> parsePrattLED xs (Leaf x) prec
+  Function _ -> let recPratt = parsePrattFunction x xs in uncurry parsePrattLED recPratt prec
   -- Operator _ -> parsePrattTreeLED xs (Branch x []) prec
-  StartParen -> let recPratt = parsePrattParens xs in uncurry parsePrattTreeLED recPratt prec
+  StartParen -> let recPratt = parsePrattParens xs in uncurry parsePrattLED recPratt prec
   _ -> error "not yet implemented"
 
-parsePrattTreeLED :: [Token] -> Tree -> Int -> ([Token], Tree)
-parsePrattTreeLED [] tree prec = ([], tree)
-parsePrattTreeLED all@(x : xs) tree prec = case x of
+parsePrattLED :: [Token] -> Tree -> Int -> ([Token], Tree)
+parsePrattLED [] tree prec = ([], tree)
+parsePrattLED all@(x : xs) tree prec = case x of
   Operator c ->
     let opPrec = fst (getFromDict operatorPrecedence c)
      in if opPrec < prec || (opPrec == prec && snd (getFromDict operatorPrecedence c))
           then (all, tree)
           else
-            let recPratt = parsePrattTreeNUD xs opPrec
-             in parsePrattTreeLED (fst recPratt) (Branch x [tree, snd recPratt]) prec
+            let recPratt = parsePrattNUD xs opPrec
+             in parsePrattLED (fst recPratt) (Branch x [tree, snd recPratt]) prec
   _ -> (all, tree)
 
-parseTree :: [Token] -> Tree
-parseTree x = snd $ parsePrattTreeNUD x 0
+parse :: [Token] -> Tree
+parse x = snd $ parsePrattNUD x 0
 
 applyOperator :: Char -> [Double] -> Double
 applyOperator _ [] = error "too few operands"
@@ -133,14 +133,14 @@ applyFunction o (x : xs)
   | o == "abs" && null xs = abs x
   | otherwise = error "unknown function"
 
-evaluateTree :: Tree -> Double
-evaluateTree (Leaf x) = case x of
+evaluate :: Tree -> Double
+evaluate (Leaf x) = case x of
   Number n -> n
   _ -> error "bad input"
-evaluateTree (Branch x l) = case x of
-  Operator c -> applyOperator c $ map evaluateTree l
-  Function s -> applyFunction s $ map evaluateTree l
+evaluate (Branch x l) = case x of
+  Operator c -> applyOperator c $ map evaluate l
+  Function s -> applyFunction s $ map evaluate l
   _ -> error "bad input"
 
 calc :: String -> Double
-calc s = evaluateTree $ parseTree $ tokenize s
+calc s = evaluate $ parse $ tokenize s
