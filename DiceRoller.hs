@@ -90,7 +90,7 @@ parseUnary :: Token -> [Token] -> ([Token], Tree)
 parseUnary o [] = error "invalid input"
 parseUnary t@(Operator o) l =
   let opPrec = fromMaybe (error "unknown prefix operator") (getFromDict prefixOperatorPrecedence o)
-      recPratt = parsePrattNUD l opPrec
+      recPratt = parseNUD l opPrec
    in (fst recPratt, Branch t [snd recPratt])
 
 parseFunction :: Token -> [Token] -> ([Token], Tree)
@@ -106,7 +106,7 @@ parseArguments l a = case head $ fst recPratt of
   EndParen -> (tail (fst recPratt), a ++ [snd recPratt])
   _ -> error "unmatched parentheses"
   where
-    recPratt = parsePrattNUD l 0
+    recPratt = parseNUD l 0
 
 parseParens :: [Token] -> ([Token], Tree)
 parseParens [] = error "unmatched parentheses"
@@ -114,7 +114,7 @@ parseParens l = case head $ fst recPratt of
   EndParen -> (tail (fst recPratt), snd recPratt)
   _ -> error "unmatched parentheses"
   where
-    recPratt = parsePrattNUD l 0
+    recPratt = parseNUD l 0
 
 parselets :: Token -> [Token] -> ([Token], Tree)
 parselets x xs = case x of
@@ -124,24 +124,24 @@ parselets x xs = case x of
   StartParen -> parseParens xs
   _ -> error "not yet implemented"
 
-parsePrattNUD :: [Token] -> Int -> ([Token], Tree)
-parsePrattNUD [] prec = error "empty parser input"
-parsePrattNUD (x : xs) prec = uncurry parsePrattLED (parselets x xs) prec
+parseNUD :: [Token] -> Int -> ([Token], Tree)
+parseNUD [] prec = error "empty parser input"
+parseNUD (x : xs) prec = uncurry parseLED (parselets x xs) prec
 
-parseInfixLED :: Char -> [Token] -> [Token] -> Tree -> Int -> ([Token], Tree)
-parseInfixLED o lLess lMore tree prec
+parseInfix :: Char -> [Token] -> [Token] -> Tree -> Int -> ([Token], Tree)
+parseInfix o lLess lMore tree prec
   | opPrec < prec || (opPrec == prec && opAsc) = (lLess, tree)
-  | otherwise = let recPratt = parsePrattNUD lMore opPrec in parsePrattLED (fst recPratt) (Branch (Operator o) [tree, snd recPratt]) prec
+  | otherwise = let recPratt = parseNUD lMore opPrec in parseLED (fst recPratt) (Branch (Operator o) [tree, snd recPratt]) prec
   where
     opInfo = fromMaybe (error "unknown infix operator") (getFromDict infixOperatorPrecedence o)
     opPrec = fst opInfo
     opAsc = snd opInfo
 
-parsePrattLED :: [Token] -> Tree -> Int -> ([Token], Tree)
-parsePrattLED [] tree prec = ([], tree)
-parsePrattLED all@(x : xs) tree prec = case x of
-  StartParen -> parseInfixLED '*' all all tree prec
-  Operator c -> parseInfixLED c all xs tree prec
+parseLED :: [Token] -> Tree -> Int -> ([Token], Tree)
+parseLED [] tree prec = ([], tree)
+parseLED all@(x : xs) tree prec = case x of
+  StartParen -> parseInfix '*' all all tree prec
+  Operator c -> parseInfix c all xs tree prec
   _ -> (all, tree)
 
 parse :: [Token] -> Tree
@@ -149,7 +149,7 @@ parse l
   | null (fst pratt) = snd pratt
   | otherwise = error "invalid input"
   where
-    pratt = parsePrattNUD l 0
+    pratt = parseNUD l 0
 
 fac :: Double -> Double
 fac 0 = 1
