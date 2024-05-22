@@ -17,13 +17,15 @@ type RemTokens = [Token]
 
 type Error = String
 
-type ParseReturn = (RemTokens, Either Error TokenTree)
+type ErrorProne = Either Error
+
+type ParseReturn = (RemTokens, ErrorProne TokenTree)
 
 -- TODO:
 --  add dice rolls
 --  add mod (%)
 --  add postfix operators (just ! I think)
---  remove errors and change to either (oh no we're going to have to learn monads)
+--  remove errors and change to either for evaluation
 --  multiple Number types for integer precision? this is probably a bad idea
 
 operatorSymbols :: [Char]
@@ -87,7 +89,7 @@ tokenize l@(c : cs)
   | c `elem` letters = let (f, s) = pullString "" l in Function f : tokenize s
   | c `elem` '.' : digits = let (f, s) = pullDouble "" l in Number f : tokenize s
   | c == ' ' = tokenize cs
-  | otherwise = []
+  | otherwise = [] -- TODO: Change to errorprone for tokens checking
 
 parseNumber :: Token -> RemTokens -> ParseReturn
 parseNumber x@(Number _) l = (l, Right (Leaf x))
@@ -106,7 +108,7 @@ parseFunction f all@(x : xs) = case x of
   StartParen -> let argsReturn = parseArguments xs [] in (fst argsReturn, do a <- sequence (snd argsReturn); Right $ Branch f a)
   _ -> (all, Right (Branch f []))
 
-parseArguments :: RemTokens -> [Either Error TokenTree] -> (RemTokens, [Either Error TokenTree])
+parseArguments :: RemTokens -> [ErrorProne TokenTree] -> (RemTokens, [ErrorProne TokenTree])
 parseArguments [] a = ([], a ++ [Left "unmatched function parenthesis in "])
 parseArguments l a
   | null (fst recPratt) = ([], [Left "unmatched function parenthesis"])
@@ -140,7 +142,7 @@ parseNUD :: RemTokens -> Int -> ParseReturn
 parseNUD [] prec = ([], Left "empty parser input")
 parseNUD (x : xs) prec = uncurry parseLED (parselets x xs) prec
 
-parseInfix :: Char -> RemTokens -> RemTokens -> Either Error TokenTree -> Int -> ParseReturn
+parseInfix :: Char -> RemTokens -> RemTokens -> ErrorProne TokenTree -> Int -> ParseReturn
 -- parseInfix _ l _ (Left e) _ = (l, Left e)
 parseInfix o lLess lMore tree prec
   | opPrec < prec || (opPrec == prec && opAsc) = (lLess, tree)
@@ -159,7 +161,7 @@ parseInfix o lLess lMore tree prec
     opPrec = fst opInfo
     opAsc = snd opInfo
 
-parseLED :: RemTokens -> Either Error TokenTree -> Int -> ParseReturn
+parseLED :: RemTokens -> ErrorProne TokenTree -> Int -> ParseReturn
 -- parseLED l (Left e) _ = (l, Left e)
 parseLED [] tree prec = ([], tree)
 parseLED all@(x : xs) tree prec = case x of
