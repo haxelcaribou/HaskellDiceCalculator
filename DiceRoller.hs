@@ -10,7 +10,8 @@ data Tree = Branch Token [Tree] | Leaf Token deriving (Show, Eq)
 -- TODO:
 --  add dice rolls
 --  add mod (%)
---  multiple Number types for better precision? this is probably a bad idea
+--  remove errors and change to maybe (oh no we're going to have to learn monads)
+--  multiple Number types for integer precision? this is probably a bad idea
 
 operatorSymbols :: [Char]
 operatorSymbols = ['~', '+', '-', '*', '/', '^']
@@ -88,8 +89,9 @@ parseNumber _ _ = error "not a number"
 parseUnary :: Token -> [Token] -> ([Token], Tree)
 parseUnary o [] = error "invalid input"
 parseUnary t@(Operator o) l =
-    let opPrec = fromMaybe (error "unknown prefix operator") (getFromDict prefixOperatorPrecedence o)
-        recPratt = parsePrattNUD l opPrec in (fst recPratt, Branch t [snd recPratt])
+  let opPrec = fromMaybe (error "unknown prefix operator") (getFromDict prefixOperatorPrecedence o)
+      recPratt = parsePrattNUD l opPrec
+   in (fst recPratt, Branch t [snd recPratt])
 
 parseFunction :: Token -> [Token] -> ([Token], Tree)
 parseFunction f [] = ([], Branch f [])
@@ -126,31 +128,28 @@ parsePrattNUD :: [Token] -> Int -> ([Token], Tree)
 parsePrattNUD [] prec = error "empty parser input"
 parsePrattNUD (x : xs) prec = uncurry parsePrattLED (parselets x xs) prec
 
+parseInfixLED :: Char -> [Token] -> [Token] -> Tree -> Int -> ([Token], Tree)
+parseInfixLED o lLess lMore tree prec
+  | opPrec < prec || (opPrec == prec && opAsc) = (lLess, tree)
+  | otherwise = let recPratt = parsePrattNUD lMore opPrec in parsePrattLED (fst recPratt) (Branch (Operator o) [tree, snd recPratt]) prec
+  where
+    opInfo = fromMaybe (error "unknown infix operator") (getFromDict infixOperatorPrecedence o)
+    opPrec = fst opInfo
+    opAsc = snd opInfo
+
 parsePrattLED :: [Token] -> Tree -> Int -> ([Token], Tree)
 parsePrattLED [] tree prec = ([], tree)
 parsePrattLED all@(x : xs) tree prec = case x of
-  StartParen ->
-    let opInfo = fromMaybe (error "unknown infix operator") (getFromDict infixOperatorPrecedence '*')
-        opPrec = fst opInfo
-        opAsc = snd opInfo
-     in if opPrec < prec || (opPrec == prec && opAsc)
-          then (all, tree)
-          else
-            let recPratt = parsePrattNUD all opPrec
-             in parsePrattLED (fst recPratt) (Branch (Operator '*') [tree, snd recPratt]) prec
-  Operator c ->
-    let opInfo = fromMaybe (error "unknown infix operator") (getFromDict infixOperatorPrecedence c)
-        opPrec = fst opInfo
-        opAsc = snd opInfo
-     in if opPrec < prec || (opPrec == prec && opAsc)
-          then (all, tree)
-          else
-            let recPratt = parsePrattNUD xs opPrec
-             in parsePrattLED (fst recPratt) (Branch x [tree, snd recPratt]) prec
+  StartParen -> parseInfixLED '*' all all tree prec
+  Operator c -> parseInfixLED c all xs tree prec
   _ -> (all, tree)
 
 parse :: [Token] -> Tree
-parse x = let pratt = parsePrattNUD x 0 in if null (fst pratt) then snd pratt else error "invalid input"
+parse l
+  | null (fst pratt) = snd pratt
+  | otherwise = error "invalid input"
+  where
+    pratt = parsePrattNUD l 0
 
 fac :: Double -> Double
 fac 0 = 1
@@ -223,4 +222,4 @@ evaluate (Branch x l) = case x of
   _ -> error "bad input"
 
 calc :: String -> Double
-calc s = evaluate $ parse $ tokenize s
+calc = evaluate . parse . tokenize
