@@ -35,6 +35,11 @@ prefixOperatorPrecedence =
     ('~', 3)
   ]
 
+postfixOperatorPrecedence :: [(Char, Int)]
+postfixOperatorPrecedence =
+  [ ('!', 4)
+  ]
+
 getFromDict :: (Eq a) => [(a, b)] -> a -> Maybe b
 getFromDict [] _ = Nothing
 getFromDict (x : xs) a
