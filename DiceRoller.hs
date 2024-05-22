@@ -18,14 +18,21 @@ operatorSymbols = ['~', '+', '-', '*', '/', '^']
 operatorLetters :: [Char]
 operatorLetters = ['d', 'b', 't']
 
-operatorPrecedence :: [(Char, (Int, Bool))]
-operatorPrecedence =
+infixOperatorPrecedence :: [(Char, (Int, Bool))]
+infixOperatorPrecedence =
   [ ('+', (1, True)),
     ('-', (1, True)),
     ('*', (2, True)),
     ('/', (2, True)),
     -- ('%', (2, True)),
-    ('^', (3, False))
+    ('^', (4, False))
+  ]
+
+prefixOperatorPrecedence :: [(Char, Int)]
+prefixOperatorPrecedence =
+  [ ('+', 3),
+    ('-', 3),
+    ('~', 3)
   ]
 
 getFromDict :: (Eq a) => [(a, b)] -> a -> Maybe b
@@ -73,6 +80,18 @@ parseNumber :: Token -> [Token] -> ([Token], Tree)
 parseNumber x@(Number _) l = (l, Leaf x)
 parseNumber _ _ = error "not a number"
 
+parseUnary :: Token -> [Token] -> ([Token], Tree)
+parseUnary o [] = error "invalid input"
+parseUnary t@(Operator o) l =
+    let opPrec = fromMaybe (error "unknown prefix operator") (getFromDict prefixOperatorPrecedence o)
+        recPratt = parsePrattNUD l opPrec in (fst recPratt, Branch t [snd recPratt])
+
+parseFunction :: Token -> [Token] -> ([Token], Tree)
+parseFunction f [] = ([], Branch f [])
+parseFunction f all@(x : xs) = case x of
+  StartParen -> let recPratt = parseArguments xs [] in (fst recPratt, Branch f $ snd recPratt)
+  _ -> (all, Branch f [])
+
 parseArguments :: [Token] -> [Tree] -> ([Token], [Tree])
 parseArguments [] a = error "unmatched parentheses"
 parseArguments l a = case head $ fst recPratt of
@@ -82,12 +101,6 @@ parseArguments l a = case head $ fst recPratt of
   where
     recPratt = parsePrattNUD l 0
 
-parseFunction :: Token -> [Token] -> ([Token], Tree)
-parseFunction f [] = ([], Branch f [])
-parseFunction f all@(x : xs) = case x of
-  StartParen -> let recPratt = parseArguments xs [] in (fst recPratt, Branch f $ snd recPratt)
-  _ -> (all, Branch f [])
-
 parseParens :: [Token] -> ([Token], Tree)
 parseParens [] = error "unmatched parentheses"
 parseParens l = case head $ fst recPratt of
@@ -95,10 +108,6 @@ parseParens l = case head $ fst recPratt of
   _ -> error "unmatched parentheses"
   where
     recPratt = parsePrattNUD l 0
-
-parseUnary :: Token -> [Token] -> ([Token], Tree)
-parseUnary o [] = error "invalid input"
-parseUnary o l@(x : xs) = let recPratt = parselets x xs in (fst recPratt, Branch o [snd recPratt])
 
 parselets :: Token -> [Token] -> ([Token], Tree)
 parselets x xs = case x of
@@ -115,8 +124,17 @@ parsePrattNUD (x : xs) prec = uncurry parsePrattLED (parselets x xs) prec
 parsePrattLED :: [Token] -> Tree -> Int -> ([Token], Tree)
 parsePrattLED [] tree prec = ([], tree)
 parsePrattLED all@(x : xs) tree prec = case x of
+  StartParen ->
+    let opInfo = fromMaybe (error "unknown infix operator") (getFromDict infixOperatorPrecedence '*')
+        opPrec = fst opInfo
+        opAsc = snd opInfo
+     in if opPrec < prec || (opPrec == prec && opAsc)
+          then (all, tree)
+          else
+            let recPratt = parsePrattNUD all opPrec
+             in parsePrattLED (fst recPratt) (Branch (Operator '*') [tree, snd recPratt]) prec
   Operator c ->
-    let opInfo = fromMaybe (error "unknown infix operator") (getFromDict operatorPrecedence c)
+    let opInfo = fromMaybe (error "unknown infix operator") (getFromDict infixOperatorPrecedence c)
         opPrec = fst opInfo
         opAsc = snd opInfo
      in if opPrec < prec || (opPrec == prec && opAsc)
