@@ -10,11 +10,10 @@ data Tree = Branch Token [Tree] | Leaf Token deriving (Show, Eq)
 -- TODO:
 --  add dice rolls
 --  add mod (%)
---  add unary operator support
 --  multiple Number types for better precision? this is probably a bad idea
 
 operatorSymbols :: [Char]
-operatorSymbols = ['+', '-', '*', '/', '^']
+operatorSymbols = ['~', '+', '-', '*', '/', '^']
 
 operatorLetters :: [Char]
 operatorLetters = ['d', 'b', 't']
@@ -26,15 +25,18 @@ operatorPrecedence =
     ('*', (2, True)),
     ('/', (2, True)),
     -- ('%', (2, True)),
-    ('^', (3, False)),
-    (' ', (0, False))
+    ('^', (3, False))
   ]
 
-getFromDict :: (Eq a) => [(a, b)] -> a -> b
+getFromDict :: (Eq a) => [(a, b)] -> a -> Maybe b
+getFromDict [] _ = Nothing
 getFromDict (x : xs) a
-  | fst x == a = snd x
-  | null xs = snd x
+  | fst x == a = Just $ snd x
   | otherwise = getFromDict xs a
+
+fromMaybe :: a -> Maybe a -> a
+fromMaybe x Nothing = x
+fromMaybe _ (Just x) = x
 
 letters :: [Char]
 letters = ['a' .. 'z'] ++ ['A' .. 'Z']
@@ -67,44 +69,57 @@ tokenize l@(c : cs)
   | c == ' ' = tokenize cs
   | otherwise = []
 
-parsePrattParens :: [Token] -> ([Token], Tree)
-parsePrattParens [] = error "unmatched parentheses"
-parsePrattParens l = case head $ fst recPratt of
-  EndParen -> (tail (fst recPratt), snd recPratt)
-  _ -> error "unmatched parentheses"
-  where
-    recPratt = parsePrattNUD l 0
+parseNumber :: Token -> [Token] -> ([Token], Tree)
+parseNumber x@(Number _) l = (l, Leaf x)
+parseNumber _ _ = error "not a number"
 
-parsePrattArguments :: [Token] -> [Tree] -> ([Token], [Tree])
-parsePrattArguments [] a = error "unmatched parentheses"
-parsePrattArguments l a = case head $ fst recPratt of
-  Comma -> parsePrattArguments (tail (fst recPratt)) $ a ++ [snd recPratt]
+parseArguments :: [Token] -> [Tree] -> ([Token], [Tree])
+parseArguments [] a = error "unmatched parentheses"
+parseArguments l a = case head $ fst recPratt of
+  Comma -> parseArguments (tail (fst recPratt)) $ a ++ [snd recPratt]
   EndParen -> (tail (fst recPratt), a ++ [snd recPratt])
   _ -> error "unmatched parentheses"
   where
     recPratt = parsePrattNUD l 0
 
-parsePrattFunction :: Token -> [Token] -> ([Token], Tree)
-parsePrattFunction f [] = ([], Branch f [])
-parsePrattFunction f all@(x : xs) = case x of
-  StartParen -> let recPratt = parsePrattArguments xs [] in (fst recPratt, Branch f $ snd recPratt)
+parseFunction :: Token -> [Token] -> ([Token], Tree)
+parseFunction f [] = ([], Branch f [])
+parseFunction f all@(x : xs) = case x of
+  StartParen -> let recPratt = parseArguments xs [] in (fst recPratt, Branch f $ snd recPratt)
   _ -> (all, Branch f [])
+
+parseParens :: [Token] -> ([Token], Tree)
+parseParens [] = error "unmatched parentheses"
+parseParens l = case head $ fst recPratt of
+  EndParen -> (tail (fst recPratt), snd recPratt)
+  _ -> error "unmatched parentheses"
+  where
+    recPratt = parsePrattNUD l 0
+
+parseUnary :: Token -> [Token] -> ([Token], Tree)
+parseUnary o [] = error "invalid input"
+parseUnary o l@(x : xs) = let recPratt = parselets x xs in (fst recPratt, Branch o [snd recPratt])
+
+parselets :: Token -> [Token] -> ([Token], Tree)
+parselets x xs = case x of
+  Number _ -> parseNumber x xs
+  Operator _ -> parseUnary x xs
+  Function _ -> parseFunction x xs
+  StartParen -> parseParens xs
+  _ -> error "not yet implemented"
 
 parsePrattNUD :: [Token] -> Int -> ([Token], Tree)
 parsePrattNUD [] prec = error "empty parser input"
-parsePrattNUD (x : xs) prec = case x of
-  Number _ -> parsePrattLED xs (Leaf x) prec
-  Function _ -> let recPratt = parsePrattFunction x xs in uncurry parsePrattLED recPratt prec
-  -- Operator _ -> parsePrattTreeLED xs (Branch x []) prec
-  StartParen -> let recPratt = parsePrattParens xs in uncurry parsePrattLED recPratt prec
-  _ -> error "not yet implemented"
+parsePrattNUD (x : xs) prec = uncurry parsePrattLED (parselets x xs) prec
 
 parsePrattLED :: [Token] -> Tree -> Int -> ([Token], Tree)
 parsePrattLED [] tree prec = ([], tree)
 parsePrattLED all@(x : xs) tree prec = case x of
   Operator c ->
-    let opPrec = fst (getFromDict operatorPrecedence c)
-     in if opPrec < prec || (opPrec == prec && snd (getFromDict operatorPrecedence c))
+    let opInfo = fromMaybe (error "unknown infix operator") (getFromDict operatorPrecedence c)
+        opPrec = fst opInfo
+        opAsc = snd opInfo
+     in if opPrec < prec || (opPrec == prec && opAsc)
           then (all, tree)
           else
             let recPratt = parsePrattNUD xs opPrec
@@ -112,7 +127,7 @@ parsePrattLED all@(x : xs) tree prec = case x of
   _ -> (all, tree)
 
 parse :: [Token] -> Tree
-parse x = snd $ parsePrattNUD x 0
+parse x = let pratt = parsePrattNUD x 0 in if null (fst pratt) then snd pratt else error "invalid input"
 
 fac :: Double -> Double
 fac 0 = 1
@@ -159,6 +174,8 @@ applyFunction o [x]
   | o == "asin" = asin x
   | o == "atan" = atan x
   | o == "acos" = acos x
+  | o == "rad" = pi / 180 * x
+  | o == "deg" = 180 / pi * x
 applyFunction o [a, b]
   | o == "add" = a + b
   | o == "sub" = a - b
