@@ -5,12 +5,25 @@
 
 data Token = Operator Char | Function String | Number Double | StartParen | Comma | EndParen deriving (Show, Eq)
 
-data Tree = Branch Token [Tree] | Leaf Token deriving (Show, Eq)
+data Tree a = Leaf a | Branch a [Tree a] deriving (Show, Eq)
+
+instance Functor Tree where
+  fmap f (Leaf x) = Leaf (f x)
+  fmap f (Branch x l) = Branch (f x) $ map (fmap f) l
+
+type TokenTree = Tree Token
+
+type RemTokens = [Token]
+
+type Error = String
+
+type ParseReturn = Either Error (RemTokens, TokenTree)
 
 -- TODO:
 --  add dice rolls
 --  add mod (%)
---  remove errors and change to maybe (oh no we're going to have to learn monads)
+--  add postfix operators (just ! I think)
+--  remove errors and change to either (oh no we're going to have to learn monads)
 --  multiple Number types for integer precision? this is probably a bad idea
 
 operatorSymbols :: [Char]
@@ -40,12 +53,6 @@ postfixOperatorPrecedence :: [(Char, Int)]
 postfixOperatorPrecedence =
   [ ('!', 4)
   ]
-
-getFromDict :: (Eq a) => [(a, b)] -> a -> Maybe b
-getFromDict [] _ = Nothing
-getFromDict (x : xs) a
-  | fst x == a = Just $ snd x
-  | otherwise = getFromDict xs a
 
 fromMaybe :: a -> Maybe a -> a
 fromMaybe x Nothing = x
@@ -82,24 +89,24 @@ tokenize l@(c : cs)
   | c == ' ' = tokenize cs
   | otherwise = []
 
-parseNumber :: Token -> [Token] -> ([Token], Tree)
+parseNumber :: Token -> RemTokens -> (RemTokens, TokenTree)
 parseNumber x@(Number _) l = (l, Leaf x)
 parseNumber _ _ = error "not a number"
 
-parseUnary :: Token -> [Token] -> ([Token], Tree)
+parseUnary :: Token -> RemTokens -> (RemTokens, TokenTree)
 parseUnary o [] = error "invalid input"
 parseUnary t@(Operator o) l =
-  let opPrec = fromMaybe (error "unknown prefix operator") (getFromDict prefixOperatorPrecedence o)
+  let opPrec = fromMaybe (error "unknown prefix operator") (lookup o prefixOperatorPrecedence)
       recPratt = parseNUD l opPrec
    in (fst recPratt, Branch t [snd recPratt])
 
-parseFunction :: Token -> [Token] -> ([Token], Tree)
+parseFunction :: Token -> RemTokens -> (RemTokens, TokenTree)
 parseFunction f [] = ([], Branch f [])
 parseFunction f all@(x : xs) = case x of
   StartParen -> let recPratt = parseArguments xs [] in (fst recPratt, Branch f $ snd recPratt)
   _ -> (all, Branch f [])
 
-parseArguments :: [Token] -> [Tree] -> ([Token], [Tree])
+parseArguments :: RemTokens -> [TokenTree] -> (RemTokens, [TokenTree])
 parseArguments [] a = error "unmatched parentheses"
 parseArguments l a = case head $ fst recPratt of
   Comma -> parseArguments (tail (fst recPratt)) $ a ++ [snd recPratt]
@@ -108,7 +115,7 @@ parseArguments l a = case head $ fst recPratt of
   where
     recPratt = parseNUD l 0
 
-parseParens :: [Token] -> ([Token], Tree)
+parseParens :: RemTokens -> (RemTokens, TokenTree)
 parseParens [] = error "unmatched parentheses"
 parseParens l = case head $ fst recPratt of
   EndParen -> (tail (fst recPratt), snd recPratt)
@@ -116,7 +123,7 @@ parseParens l = case head $ fst recPratt of
   where
     recPratt = parseNUD l 0
 
-parselets :: Token -> [Token] -> ([Token], Tree)
+parselets :: Token -> RemTokens -> (RemTokens, TokenTree)
 parselets x xs = case x of
   Number _ -> parseNumber x xs
   Operator _ -> parseUnary x xs
@@ -124,27 +131,27 @@ parselets x xs = case x of
   StartParen -> parseParens xs
   _ -> error "not yet implemented"
 
-parseNUD :: [Token] -> Int -> ([Token], Tree)
+parseNUD :: RemTokens -> Int -> (RemTokens, TokenTree)
 parseNUD [] prec = error "empty parser input"
 parseNUD (x : xs) prec = uncurry parseLED (parselets x xs) prec
 
-parseInfix :: Char -> [Token] -> [Token] -> Tree -> Int -> ([Token], Tree)
+parseInfix :: Char -> [Token] -> [Token] -> TokenTree -> Int -> (RemTokens, TokenTree)
 parseInfix o lLess lMore tree prec
   | opPrec < prec || (opPrec == prec && opAsc) = (lLess, tree)
   | otherwise = let recPratt = parseNUD lMore opPrec in parseLED (fst recPratt) (Branch (Operator o) [tree, snd recPratt]) prec
   where
-    opInfo = fromMaybe (error "unknown infix operator") (getFromDict infixOperatorPrecedence o)
+    opInfo = fromMaybe (error "unknown infix operator") (lookup o infixOperatorPrecedence)
     opPrec = fst opInfo
     opAsc = snd opInfo
 
-parseLED :: [Token] -> Tree -> Int -> ([Token], Tree)
+parseLED :: RemTokens -> TokenTree -> Int -> (RemTokens, TokenTree)
 parseLED [] tree prec = ([], tree)
 parseLED all@(x : xs) tree prec = case x of
   StartParen -> parseInfix '*' all all tree prec
   Operator c -> parseInfix c all xs tree prec
   _ -> (all, tree)
 
-parse :: [Token] -> Tree
+parse :: [Token] -> TokenTree
 parse l
   | null (fst pratt) = snd pratt
   | otherwise = error "invalid input"
@@ -212,7 +219,7 @@ applyFunction o l@(x : xs)
   | o == "max" = maximum l
   | otherwise = error "unknown function"
 
-evaluate :: Tree -> Double
+evaluate :: TokenTree -> Double
 evaluate (Leaf x) = case x of
   Number n -> n
   _ -> error "bad input"
@@ -223,3 +230,9 @@ evaluate (Branch x l) = case x of
 
 calc :: String -> Double
 calc = evaluate . parse . tokenize
+
+-- main :: IO ()
+main = do
+  putStr "Enter Value: "
+  input <- getLine
+  print . calc $ input
