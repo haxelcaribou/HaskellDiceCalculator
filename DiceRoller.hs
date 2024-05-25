@@ -3,182 +3,36 @@
 {-# HLINT ignore "Use first" #-}
 {-# HLINT ignore "Use second" #-}
 
-data Token = Operator Char | Function String | Number Double | StartParen | Comma | EndParen deriving (Show, Eq)
-
-data Tree a = Leaf a | Branch a [Tree a] deriving (Show, Eq)
-
-instance Functor Tree where
-  fmap f (Leaf x) = Leaf (f x)
-  fmap f (Branch x l) = Branch (f x) $ map (fmap f) l
+import Error
+import Token
+import Tree
+import Tokenizer
+import Parser
 
 type TokenTree = Tree Token
-
-type RemTokens = [Token]
-
-type Error = String
-
-type ErrorProne = Either Error
-
-type ParseReturn = (RemTokens, ErrorProne TokenTree)
 
 -- TODO:
 --  add dice rolls
 --  add mod (%)
---  add postfix operators (just ! I think)
+--  add postfix operators (just ! I think) (update: the gamma function is actually pretty complicated)
 --  remove errors and change to either for evaluation
 --  multiple Number types for integer precision? this is probably a bad idea
 
-operatorSymbols :: [Char]
-operatorSymbols = ['~', '+', '-', '*', '/', '^']
+errorMessege :: Maybe a -> String -> Either Error a
+errorMessege Nothing e = Left e
+errorMessege (Just x) _ = Right x
 
-operatorLetters :: [Char]
-operatorLetters = ['d', 'b', 't']
+toIntegral :: (RealFrac a, Integral b) => a -> Maybe b
+toIntegral r
+  | fromIntegral i == r = Just i
+  | otherwise = Nothing
+  where i = truncate r
 
-infixOperatorPrecedence :: [(Char, (Int, Bool))]
-infixOperatorPrecedence =
-  [ ('+', (1, True)),
-    ('-', (1, True)),
-    ('*', (2, True)),
-    ('/', (2, True)),
-    -- ('%', (2, True)),
-    ('^', (4, False))
-  ]
-
-prefixOperatorPrecedence :: [(Char, Int)]
-prefixOperatorPrecedence =
-  [ ('+', 3),
-    ('-', 3),
-    ('~', 3)
-  ]
-
-postfixOperatorPrecedence :: [(Char, Int)]
-postfixOperatorPrecedence =
-  [ ('!', 4)
-  ]
-
-fromMaybe :: a -> Maybe a -> a
-fromMaybe x Nothing = x
-fromMaybe _ (Just x) = x
-
-letters :: [Char]
-letters = ['a' .. 'z'] ++ ['A' .. 'Z']
-
-digits :: [Char]
-digits = ['0' .. '9']
-
-pullDouble :: String -> String -> (Double, String)
-pullDouble f [] = (read f :: Double, "")
-pullDouble f l@(c : cs)
-  | c `elem` '.' : digits = pullDouble (f ++ [c]) cs
-  | otherwise = (read f :: Double, l)
-
-pullString :: String -> String -> (String, String)
-pullString s [] = (s, "")
-pullString s l@(c : cs)
-  | c `elem` letters = pullString (s ++ [c]) cs
-  | otherwise = (s, l)
-
-tokenize :: String -> [Token]
-tokenize "" = []
-tokenize l@(c : cs)
-  | c `elem` operatorSymbols = Operator c : tokenize cs
-  | c `elem` operatorLetters && (cs == "" || head cs `notElem` letters) = Operator c : tokenize cs
-  | c == '(' = StartParen : tokenize cs
-  | c == ',' = Comma : tokenize cs
-  | c == ')' = EndParen : tokenize cs
-  | c `elem` letters = let (f, s) = pullString "" l in Function f : tokenize s
-  | c `elem` '.' : digits = let (f, s) = pullDouble "" l in Number f : tokenize s
-  | c == ' ' = tokenize cs
-  | otherwise = [] -- TODO: Change to errorprone for tokens checking
-
-parseNumber :: Token -> RemTokens -> ParseReturn
-parseNumber x@(Number _) l = (l, Right (Leaf x))
-parseNumber _ _ = ([], Left "not a number")
-
-parseUnary :: Token -> RemTokens -> ParseReturn
-parseUnary o [] = ([], Left "invalid input")
-parseUnary t@(Operator o) l =
-  let opPrec = fromMaybe (error "unknown prefix operator") (lookup o prefixOperatorPrecedence)
-      recPratt = parseNUD l opPrec
-   in (fst recPratt, do a <- snd recPratt; Right $ Branch t [a])
-
-parseFunction :: Token -> RemTokens -> ParseReturn
-parseFunction f [] = ([], Right (Branch f []))
-parseFunction f all@(x : xs) = case x of
-  StartParen -> let argsReturn = parseArguments xs [] in (fst argsReturn, do a <- sequence (snd argsReturn); Right $ Branch f a)
-  _ -> (all, Right (Branch f []))
-
-parseArguments :: RemTokens -> [ErrorProne TokenTree] -> (RemTokens, [ErrorProne TokenTree])
-parseArguments [] a = ([], a ++ [Left "unmatched function parenthesis in "])
-parseArguments l a
-  | null (fst recPratt) = ([], [Left "unmatched function parenthesis"])
-  |otherwise = case head $ fst recPratt of
-  Comma -> parseArguments (tail (fst recPratt)) $ a ++ [snd recPratt]
-  EndParen -> (tail (fst recPratt), a ++ [snd recPratt])
-  _ -> ([], a ++ [Left "unmatched function parenthesis"])
-  where
-    recPratt = parseNUD l 0
-
-parseParens :: RemTokens -> ParseReturn
-parseParens [] = ([], Left "unmatched start parenthesis")
-parseParens l
-  | null (fst recPratt) = ([], Left "unmatched start parenthesis")
-  | otherwise = case head $ fst recPratt of
-      EndParen -> (tail (fst recPratt), snd recPratt)
-      _ -> ([], Left "unmatched start parenthesis")
-  where
-    recPratt = parseNUD l 0
-
-parselets :: Token -> RemTokens -> ParseReturn
-parselets x xs = case x of
-  Number _ -> parseNumber x xs
-  Operator _ -> parseUnary x xs
-  Function _ -> parseFunction x xs
-  StartParen -> parseParens xs
-  EndParen -> ([], Left "unmatched end parenthesis")
-  _ -> ([], Left "invalid input")
-
-parseNUD :: RemTokens -> Int -> ParseReturn
-parseNUD [] prec = ([], Left "empty parser input")
-parseNUD (x : xs) prec = uncurry parseLED (parselets x xs) prec
-
-parseInfix :: Char -> RemTokens -> RemTokens -> ErrorProne TokenTree -> Int -> ParseReturn
--- parseInfix _ l _ (Left e) _ = (l, Left e)
-parseInfix o lLess lMore tree prec
-  | opPrec < prec || (opPrec == prec && opAsc) = (lLess, tree)
-  | otherwise =
-      let recPratt = parseNUD lMore opPrec
-       in parseLED
-            (fst recPratt)
-            ( do
-                a <- tree
-                b <- snd recPratt
-                Right (Branch (Operator o) [a, b])
-            )
-            prec
-  where
-    opInfo = fromMaybe (error "unknown infix operator") (lookup o infixOperatorPrecedence)
-    opPrec = fst opInfo
-    opAsc = snd opInfo
-
-parseLED :: RemTokens -> ErrorProne TokenTree -> Int -> ParseReturn
--- parseLED l (Left e) _ = (l, Left e)
-parseLED [] tree prec = ([], tree)
-parseLED all@(x : xs) tree prec = case x of
-  StartParen -> parseInfix '*' all all tree prec
-  Operator c -> parseInfix c all xs tree prec
-  _ -> (all, tree)
-
-parse :: [Token] -> TokenTree
-parse l = case snd pratt of
-  (Left e) -> error e
-  (Right t) -> if null (fst pratt) then t else error "invalid input"
-  where
-    pratt = parseNUD l 0
-
-fac :: Double -> Double
-fac 0 = 1
-fac x = x * fac (x - 1)
+fac :: Integral a => a -> Maybe a
+fac x
+  | x < 0 = Nothing
+  | x == 0 = Just 1
+  | otherwise = fac (x - 1) >>= \a -> Just (x * a)
 
 applyOperator :: Char -> [Double] -> Double
 applyOperator _ [] = error "too few operands"
@@ -194,7 +48,7 @@ applyOperator o [a]
   | o == '+' = a
   | o == '-' = -a
   | o == '~' = -a
-  | o == '!' = fac a
+  -- | o == '!' = fac $ toIntegral a
   | otherwise = error "unknown unary operator"
 
 applyFunction :: String -> [Double] -> Double
@@ -214,7 +68,7 @@ applyFunction o [x]
   | o == "sqrt" = sqrt x
   | o == "ln" = log x
   | o == "log" = logBase 10 x
-  | o == "fac" = fac x
+  -- | o == "fac" = fac $ toIntegral x
   | o == "sin" = sin x
   | o == "tan" = tan x
   | o == "cos" = cos x
