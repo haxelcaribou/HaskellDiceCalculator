@@ -4,7 +4,7 @@ import Error
 import Token
 import Tree
 
-errorMessege :: Maybe a -> String -> Either Error a
+errorMessege :: Maybe a -> String -> ErrorProne a
 errorMessege Nothing e = Left e
 errorMessege (Just x) _ = Right x
 
