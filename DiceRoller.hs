@@ -1,8 +1,3 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Use first" #-}
-{-# HLINT ignore "Use second" #-}
-
 import Error
 import Tokenizer
 import Parser
