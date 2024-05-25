@@ -61,8 +61,8 @@ applyFunction o [x]
   | o == "asin" = asin x
   | o == "atan" = atan x
   | o == "acos" = acos x
-  | o == "rad" = pi / 180 * x
-  | o == "deg" = 180 / pi * x
+  | o == "rad" = x / 180 * pi
+  | o == "deg" = x / pi * 180
 applyFunction o [a, b]
   | o == "add" = a + b
   | o == "sub" = a - b
