@@ -4,14 +4,13 @@
 {-# HLINT ignore "Use second" #-}
 
 import Error
-import Token
-import Tree
 import Tokenizer
 import Parser
 import Evaluator
 
 -- TODO:
 --  add dice rolls
+--  bcd float encoding???
 --  add mod (%)
 --  add postfix operators (just ! I think) (update: the gamma function is actually pretty complicated)
 --  remove errors and change to either for evaluation
