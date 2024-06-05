@@ -1,9 +1,14 @@
+module Dice (rollDice) where
+
 import System.Random
 
 --  TODO: Add dice removal 
 
-rollDice :: StdGen -> Int -> Int -> Maybe [Int]
-rollDice g n s
+rollDice :: StdGen -> Int -> Int -> Maybe Int
+rollDice g n s = getDiceRoll g n s >>= Just . sum
+
+getDiceRoll :: StdGen -> Int -> Int -> Maybe [Int]
+getDiceRoll g n s
   | n < 0 = Nothing
   | otherwise = Just $ take n $ randomRs (1, s) g
 

@@ -24,7 +24,8 @@ infixOperatorPrecedence =
     ('*', (2, True)),
     ('/', (2, True)),
     -- ('%', (2, True)),
-    ('^', (4, False))
+    ('^', (4, False)),
+    ('d', (5, True))
   ]
 
 prefixOperatorPrecedence :: [(Char, Int)]
@@ -117,9 +118,9 @@ parseLED all@(x : xs) tree prec = case x of
   Operator c -> parseInfix c all xs tree prec
   _ -> (all, tree)
 
-parse :: [Token] -> TokenTree
-parse l = case snd pratt of
-  (Left e) -> error e
-  (Right t) -> if null (fst pratt) then t else error "invalid input"
+parse :: [Token] -> ErrorProne TokenTree
+parse l
+  | null (fst pratt) = snd pratt
+  | otherwise = Left "invalid input"
   where
     pratt = parseNUD l 0

@@ -2,20 +2,25 @@ import Error
 import Tokenizer
 import Parser
 import Evaluator
+import System.Random
 
 -- TODO:
---  add dice rolls
+--  make dice be actualy random
+--  improve error messege clarity
 --  bcd float encoding???
 --  add mod (%)
---  add postfix operators (just ! I think) (update: the gamma function is actually pretty complicated)
---  remove errors and change to either for evaluation
---  multiple Number types for integer precision? this is probably a bad idea
+--  add postfix operators (just ! I think)
 
-calc :: String -> Double
-calc = evaluate . parse . tokenize
+calc :: StdGen -> String -> ErrorProne Double
+calc s = evaluate s . parse . tokenize
 
--- main :: IO ()
+calcToString :: ErrorProne Double -> String
+calcToString (Left e) = e
+calcToString (Right n) = show n
+
+main :: IO ()
 main = do
   putStr "Enter Value: "
   input <- getLine
-  print . calc $ input
+  gen <- getStdGen
+  print . calcToString . calc gen $ input
