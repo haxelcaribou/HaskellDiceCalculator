@@ -17,6 +17,9 @@ toIntegral r
   where
     i = truncate r
 
+intFuncWrapper :: (Integral a) => (a -> Maybe a) -> (Double -> Maybe Double)
+intFuncWrapper f x = (toIntegral x >>= f) >>= (Just . fromIntegral)
+
 fac :: Integral a => a -> Maybe a
 fac x
   | x < 0 = Nothing
@@ -43,7 +46,7 @@ applyOperator gen o [a]
   | o == '+' = Right a
   | o == '-' = Right $ -a
   | o == '~' = Right $ -a
-  | o == '!' = errorMessege ((toIntegral a >>= fac) >>= (Just . fromIntegral)) "factorial error"
+  | o == '!' = errorMessege (intFuncWrapper fac a) "factorial error"
 applyFunction :: StdGen -> String -> [Double] -> ErrorProne Double
 applyFunction gen o []
   | o == "pi" = Right pi
@@ -61,7 +64,7 @@ applyFunction gen o [x]
   | o == "sqrt" = Right $ sqrt x
   | o == "ln" = Right $ log x
   | o == "log" = Right $ logBase 10 x
-  | o == "fac" = errorMessege ((toIntegral x >>= fac) >>= (Just . fromIntegral)) "factorial error"
+  | o == "fac" = errorMessege (intFuncWrapper fac x) "factorial error"
   | o == "sin" = Right $ sin x
   | o == "tan" = Right $ tan x
   | o == "cos" = Right $ cos x
