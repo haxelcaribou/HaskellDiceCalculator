@@ -11,7 +11,7 @@ import Tokenizer
 --  add postfix operators (just ! I think)
 
 calc :: StdGen -> String -> ErrorProne Double
-calc s = evaluate s . parse . tokenize
+calc g s = fst <$> (evaluate g . parse . tokenize) s
 
 calcToString :: ErrorProne Double -> String
 calcToString (Left e) = e

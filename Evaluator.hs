@@ -1,3 +1,8 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use tuple-section" #-}
+{-# HLINT ignore "Use first" #-}
+
 module Evaluator (evaluate) where
 
 import Dice
@@ -48,77 +53,87 @@ fac x
   | x == 0 = Just 1
   | otherwise = (x *) <$> fac (x - 1)
 
-applyOperator :: StdGen -> Char -> [Double] -> ErrorProne Double
+applyDefault :: StdGen -> Double -> ErrorProne (Double, StdGen)
+applyDefault g x = Right (x, g)
+
+applyDice :: StdGen -> Maybe Int -> Maybe Int -> ErrorProne (Double, StdGen)
+applyDice g Nothing _ = Left "dice error"
+applyDice g _ Nothing = Left "dice error"
+applyDice g (Just num) (Just sides) = errorMessege ((\d -> (fromIntegral (fst d), snd d)) <$> Dice.rollDice g num sides) "dice error"
+
+applyOperator :: StdGen -> Char -> [Double] -> ErrorProne (Double, StdGen)
 applyOperator gen _ [] = Left "too few operands"
 applyOperator gen _ (a : b : c : xs) = Left "too many operands"
 applyOperator gen o [a, b]
-  | o == '+' = Right $ a + b
-  | o == '-' = Right $ a - b
-  | o == '*' = Right $ a * b
-  | o == '/' = Right $ a / b
-  | o == '^' = Right $ a ** b
-  | o == '%' = errorMessege (intFuncDouble' mod' a b) "mod error"
-  | o == 'd' =
-      let x = do
-            num <- toIntegral a
-            sides <- toIntegral b
-            Dice.rollDice gen num sides
-       in errorMessege (fromIntegral <$> x) "dice error"
+  | o == '+' = applyDefault gen $ a + b
+  | o == '-' = applyDefault gen $ a - b
+  | o == '*' = applyDefault gen $ a * b
+  | o == '/' = applyDefault gen $ a / b
+  | o == '^' = applyDefault gen $ a ** b
+  | o == '%' = (\x -> (x, gen)) <$> errorMessege (intFuncDouble' mod' a b) "mod error"
+  | o == 'd' = applyDice gen (toIntegral a) (toIntegral b)
   | otherwise = Left "unknown operator"
 applyOperator gen o [a]
-  | o == '+' = Right a
-  | o == '-' = Right $ -a
-  | o == '~' = Right $ -a
-  | o == '!' = errorMessege (intFuncSingle' fac a) "factorial error"
+  | o == '+' = applyDefault gen a
+  | o == '-' = applyDefault gen $ -a
+  | o == '~' = applyDefault gen $ -a
+  | o == '!' = (\x -> (x, gen)) <$> errorMessege (intFuncSingle' fac a) "factorial error"
 
-applyFunction :: StdGen -> String -> [Double] -> ErrorProne Double
+applyFunction :: StdGen -> String -> [Double] -> ErrorProne (Double, StdGen)
 applyFunction gen o []
-  | o == "pi" = Right pi
-  | o == "e" = Right $ exp 1
+  | o == "pi" = applyDefault gen pi
+  | o == "e" = applyDefault gen $ exp 1
   | otherwise = Left "unknown constant"
 applyFunction gen o [x]
-  | o == "negate" = Right $ negate x
-  | o == "abs" = Right $ abs x
-  | o == "sign" = Right $ signum x
-  | o == "round" = Right $ fromIntegral $ round x
-  | o == "trunc" = Right $ fromIntegral $ truncate x
-  | o == "floor" = Right $ fromIntegral $ floor x
-  | o == "ceil" = Right $ fromIntegral $ ceiling x
-  | o == "exp" = Right $ exp x
-  | o == "sqrt" = Right $ sqrt x
-  | o == "ln" = Right $ log x
-  | o == "log" = Right $ logBase 10 x
-  | o == "fac" = errorMessege (intFuncSingle' fac x) "factorial error"
-  | o == "sin" = Right $ sin x
-  | o == "tan" = Right $ tan x
-  | o == "cos" = Right $ cos x
-  | o == "asin" = Right $ asin x
-  | o == "atan" = Right $ atan x
-  | o == "acos" = Right $ acos x
-  | o == "rad" = Right $ x / 180 * pi
-  | o == "deg" = Right $ x / pi * 180
+  | o == "negate" = applyDefault gen $ negate x
+  | o == "abs" = applyDefault gen $ abs x
+  | o == "sign" = applyDefault gen $ signum x
+  | o == "round" = applyDefault gen $ fromIntegral $ round x
+  | o == "trunc" = applyDefault gen $ fromIntegral $ truncate x
+  | o == "floor" = applyDefault gen $ fromIntegral $ floor x
+  | o == "ceil" = applyDefault gen $ fromIntegral $ ceiling x
+  | o == "exp" = applyDefault gen $ exp x
+  | o == "sqrt" = applyDefault gen $ sqrt x
+  | o == "ln" = applyDefault gen $ log x
+  | o == "log" = applyDefault gen $ logBase 10 x
+  | o == "fac" = (\x -> (x, gen)) <$> errorMessege (intFuncSingle' fac x) "factorial error"
+  | o == "sin" = applyDefault gen $ sin x
+  | o == "tan" = applyDefault gen $ tan x
+  | o == "cos" = applyDefault gen $ cos x
+  | o == "asin" = applyDefault gen $ asin x
+  | o == "atan" = applyDefault gen $ atan x
+  | o == "acos" = applyDefault gen $ acos x
+  | o == "rad" = applyDefault gen $ x / 180 * pi
+  | o == "deg" = applyDefault gen $ x / pi * 180
 applyFunction gen o [a, b]
-  | o == "add" = Right $ a + b
-  | o == "sub" = Right $ a - b
-  | o == "mult" = Right $ a * b
-  | o == "div" = Right $ a / b
-  | o == "mod" = errorMessege (intFuncDouble' mod' a b) "mod error"
-  | o == "rem" = errorMessege (intFuncDouble' rem' a b) "mod error"
-  | o == "pow" = Right $ a ** b
-  | o == "log" = Right $ logBase b a
+  | o == "add" = applyDefault gen $ a + b
+  | o == "sub" = applyDefault gen $ a - b
+  | o == "mult" = applyDefault gen $ a * b
+  | o == "div" = applyDefault gen $ a / b
+  | o == "mod" = (\x -> (x, gen)) <$> errorMessege (intFuncDouble' mod' a b) "mod error"
+  | o == "rem" = (\x -> (x, gen)) <$> errorMessege (intFuncDouble' rem' a b) "mod error"
+  | o == "pow" = applyDefault gen $ a ** b
+  | o == "log" = applyDefault gen $ logBase b a
 applyFunction gen o l@(x : xs)
-  | o == "sum" = Right $ sum l
-  | o == "prod" = Right $ product l
-  | o == "min" = Right $ minimum l
-  | o == "max" = Right $ maximum l
+  | o == "sum" = applyDefault gen $ sum l
+  | o == "prod" = applyDefault gen $ product l
+  | o == "min" = applyDefault gen $ minimum l
+  | o == "max" = applyDefault gen $ maximum l
   | otherwise = Left "unknown function"
 
-evaluate :: StdGen -> ErrorProne (Tree Token) -> ErrorProne Double
+evaluate :: StdGen -> ErrorProne (Tree Token) -> ErrorProne (Double, StdGen)
 evaluate _ (Left e) = Left e
 evaluate gen (Right (Leaf x)) = case x of
-  Number n -> Right n
+  Number n -> Right (n, gen)
   _ -> Left "bad input"
 evaluate gen (Right (Branch x l)) = case x of
-  Operator c -> mapM (evaluate gen . Right) l >>= applyOperator gen c
-  Function s -> mapM (evaluate gen . Right) l >>= applyFunction gen s
+  Operator c -> evaluate' gen l >>= (\a -> applyOperator (snd a) c (fst a))
+  Function s -> evaluate' gen l >>= (\a -> applyFunction (snd a) s (fst a))
   _ -> Left "bad input"
+
+evaluate' :: StdGen -> [Tree Token] -> ErrorProne ([Double], StdGen)
+evaluate' g [] = Right ([], g)
+evaluate' g l@(x : xs) = do
+  a <- evaluate g (Right x)
+  b <- evaluate' (snd a) xs
+  Right (fst a : fst b, snd b)
