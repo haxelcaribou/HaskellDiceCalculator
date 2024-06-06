@@ -1,5 +1,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
 {-# HLINT ignore "Use first" #-}
+{-# HLINT ignore "Use second" #-}
 
 module Parser (parse) where
 
@@ -16,6 +18,10 @@ type ParseReturn = (RemTokens, ErrorProne TokenTree)
 fromMaybe :: a -> Maybe a -> a
 fromMaybe x Nothing = x
 fromMaybe _ (Just x) = x
+
+errorMessege :: Maybe a -> String -> ErrorProne a
+errorMessege Nothing e = Left e
+errorMessege (Just x) _ = Right x
 
 infixOperatorPrecedence :: [(Char, (Int, Bool))]
 infixOperatorPrecedence =
@@ -37,8 +43,7 @@ prefixOperatorPrecedence =
 
 postfixOperatorPrecedence :: [(Char, Int)]
 postfixOperatorPrecedence =
-  [ ('!', 4)
-  ]
+  [('!', 4)]
 
 parseNumber :: Token -> RemTokens -> ParseReturn
 parseNumber x@(Number _) l = (l, Right (Leaf x))
@@ -47,14 +52,17 @@ parseNumber _ _ = ([], Left "not a number")
 parseUnary :: Token -> RemTokens -> ParseReturn
 parseUnary o [] = ([], Left "invalid input")
 parseUnary t@(Operator o) l =
-  let opPrec = fromMaybe (error "unknown prefix operator") (lookup o prefixOperatorPrecedence)
-      recPratt = parseNUD l opPrec
-   in (fst recPratt, do a <- snd recPratt; Right $ Branch t [a])
+  let opPrec' = lookup o prefixOperatorPrecedence
+   in case opPrec' of
+        Nothing -> (l, Left "unknown prefix operator")
+        Just opPrec ->
+          let recPratt = parseNUD l opPrec
+           in (fst recPratt, (\a -> Branch t [a]) <$> snd recPratt )
 
 parseFunction :: Token -> RemTokens -> ParseReturn
 parseFunction f [] = ([], Right (Branch f []))
 parseFunction f l@(x : xs) = case x of
-  StartParen -> let argsReturn = parseArguments xs [] in (fst argsReturn, do a <- sequence (snd argsReturn); Right $ Branch f a)
+  StartParen -> let argsReturn = parseArguments xs [] in (fst argsReturn, Branch f <$> sequence (snd argsReturn))
   _ -> (l, Right (Branch f []))
 
 parseArguments :: RemTokens -> [ErrorProne TokenTree] -> (RemTokens, [ErrorProne TokenTree])
@@ -93,22 +101,25 @@ parseNUD (x : xs) prec = uncurry parseLED (parselets x xs) prec
 
 parseInfix :: Char -> RemTokens -> RemTokens -> ErrorProne TokenTree -> Int -> ParseReturn
 -- parseInfix _ l _ (Left e) _ = (l, Left e)
-parseInfix o lLess lMore tree prec
-  | opPrec < prec || (opPrec == prec && opAsc) = (lLess, tree)
-  | otherwise =
-      let recPratt = parseNUD lMore opPrec
-       in parseLED
-            (fst recPratt)
-            ( do
-                a <- tree
-                b <- snd recPratt
-                Right (Branch (Operator o) [a, b])
-            )
-            prec
-  where
-    opInfo = fromMaybe (error "unknown infix operator") (lookup o infixOperatorPrecedence)
-    opPrec = fst opInfo
-    opAsc = snd opInfo
+parseInfix o lLess lMore tree prec =
+  let opInfoMaybe = lookup o infixOperatorPrecedence
+   in case opInfoMaybe of
+        Nothing -> (lLess, Left "unknown infix operator")
+        Just opInfo ->
+          let opPrec = fst opInfo
+              opAsc = snd opInfo
+              recPratt = parseNUD lMore opPrec
+           in if opPrec < prec || (opPrec == prec && opAsc)
+                then (lLess, tree)
+                else
+                  parseLED
+                    (fst recPratt)
+                    ( do
+                        a <- tree
+                        b <- snd recPratt
+                        Right (Branch (Operator o) [a, b])
+                    )
+                    prec
 
 parseLED :: RemTokens -> ErrorProne TokenTree -> Int -> ParseReturn
 -- parseLED l (Left e) _ = (l, Left e)

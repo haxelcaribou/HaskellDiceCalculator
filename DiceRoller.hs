@@ -1,8 +1,8 @@
 import Error
-import Tokenizer
-import Parser
 import Evaluator
+import Parser
 import System.Random
+import Tokenizer
 
 -- TODO:
 --  make dice be actualy random
@@ -18,9 +18,18 @@ calcToString :: ErrorProne Double -> String
 calcToString (Left e) = e
 calcToString (Right n) = show n
 
-main :: IO ()
-main = do
+answer :: StdGen -> IO ()
+answer gen = do
   putStr "Enter Value: "
   input <- getLine
+  if input == "exit"
+    then print "exiting"
+    else do
+      print . calcToString . calc gen $ input
+      newGen <- newStdGen
+      answer newGen
+
+main :: IO ()
+main = do
   gen <- getStdGen
-  print . calcToString . calc gen $ input
+  answer gen

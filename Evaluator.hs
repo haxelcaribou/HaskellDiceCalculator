@@ -18,13 +18,13 @@ toIntegral r
     i = truncate r
 
 intFuncWrapper :: (Integral a) => (a -> Maybe a) -> (Double -> Maybe Double)
-intFuncWrapper f x = (toIntegral x >>= f) >>= (Just . fromIntegral)
+intFuncWrapper f x = fromIntegral <$> (toIntegral x >>= f)
 
 fac :: Integral a => a -> Maybe a
 fac x
   | x < 0 = Nothing
   | x == 0 = Just 1
-  | otherwise = fac (x - 1) >>= \a -> Just (x * a)
+  | otherwise = (x *) <$> fac (x - 1)
 
 applyOperator :: StdGen -> Char -> [Double] -> ErrorProne Double
 applyOperator gen _ [] = Left "too few operands"
@@ -40,13 +40,14 @@ applyOperator gen o [a, b]
             num <- toIntegral a
             sides <- toIntegral b
             Dice.rollDice gen num sides
-       in errorMessege (x >>= (Just . fromIntegral)) "dice error"
+       in errorMessege (fromIntegral <$> x) "dice error"
   | otherwise = Left "unknown operator"
 applyOperator gen o [a]
   | o == '+' = Right a
   | o == '-' = Right $ -a
   | o == '~' = Right $ -a
   | o == '!' = errorMessege (intFuncWrapper fac a) "factorial error"
+
 applyFunction :: StdGen -> String -> [Double] -> ErrorProne Double
 applyFunction gen o []
   | o == "pi" = Right pi

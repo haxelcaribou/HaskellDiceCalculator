@@ -5,7 +5,7 @@ import System.Random
 --  TODO: Add dice removal 
 
 rollDice :: StdGen -> Int -> Int -> Maybe Int
-rollDice g n s = getDiceRoll g n s >>= Just . sum
+rollDice g n s = sum <$> getDiceRoll g n s
 
 getDiceRoll :: StdGen -> Int -> Int -> Maybe [Int]
 getDiceRoll g n s
