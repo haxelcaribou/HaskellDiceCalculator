@@ -6,6 +6,7 @@ import Tokenizer
 
 -- TODO:
 --  make dice be actually random (oh no IO)
+--  avoid runtime error on mod by 0
 --  improve error messege clarity
 --  bcd float encoding???
 --  add postfix operators (just ! I think)

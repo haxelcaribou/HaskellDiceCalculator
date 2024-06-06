@@ -84,6 +84,7 @@ applyFunction gen o [a, b]
   | o == "mult" = Right $ a * b
   | o == "div" = Right $ a / b
   | o == "mod" = errorMessege (intFuncDouble mod a b) "mod error"
+  | o == "rem" = errorMessege (intFuncDouble rem a b) "mod error"
   | o == "pow" = Right $ a ** b
   | o == "log" = Right $ logBase b a
 applyFunction gen o l@(x : xs)
