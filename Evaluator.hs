@@ -17,8 +17,11 @@ toIntegral r
   where
     i = truncate r
 
-intFuncWrapper :: (Integral a) => (a -> Maybe a) -> (Double -> Maybe Double)
-intFuncWrapper f x = fromIntegral <$> (toIntegral x >>= f)
+intFuncSingle' :: (Integral a) => (a -> Maybe a) -> (Double -> Maybe Double)
+intFuncSingle' f x = fromIntegral <$> (toIntegral x >>= f)
+
+intFuncDouble :: (Integral a) => (a -> a -> a) -> (Double -> Double -> Maybe Double)
+intFuncDouble f a b = fromIntegral <$> ((f <$> toIntegral a) <*> toIntegral b)
 
 fac :: Integral a => a -> Maybe a
 fac x
@@ -35,6 +38,7 @@ applyOperator gen o [a, b]
   | o == '*' = Right $ a * b
   | o == '/' = Right $ a / b
   | o == '^' = Right $ a ** b
+  | o == '%' = errorMessege (intFuncDouble mod a b) "mod error"
   | o == 'd' =
       let x = do
             num <- toIntegral a
@@ -46,7 +50,7 @@ applyOperator gen o [a]
   | o == '+' = Right a
   | o == '-' = Right $ -a
   | o == '~' = Right $ -a
-  | o == '!' = errorMessege (intFuncWrapper fac a) "factorial error"
+  | o == '!' = errorMessege (intFuncSingle' fac a) "factorial error"
 
 applyFunction :: StdGen -> String -> [Double] -> ErrorProne Double
 applyFunction gen o []
@@ -65,7 +69,7 @@ applyFunction gen o [x]
   | o == "sqrt" = Right $ sqrt x
   | o == "ln" = Right $ log x
   | o == "log" = Right $ logBase 10 x
-  | o == "fac" = errorMessege (intFuncWrapper fac x) "factorial error"
+  | o == "fac" = errorMessege (intFuncSingle' fac x) "factorial error"
   | o == "sin" = Right $ sin x
   | o == "tan" = Right $ tan x
   | o == "cos" = Right $ cos x
@@ -79,6 +83,7 @@ applyFunction gen o [a, b]
   | o == "sub" = Right $ a - b
   | o == "mult" = Right $ a * b
   | o == "div" = Right $ a / b
+  | o == "mod" = errorMessege (intFuncDouble mod a b) "mod error"
   | o == "pow" = Right $ a ** b
   | o == "log" = Right $ logBase b a
 applyFunction gen o l@(x : xs)

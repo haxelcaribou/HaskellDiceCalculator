@@ -29,7 +29,7 @@ infixOperatorPrecedence =
     ('-', (1, True)),
     ('*', (2, True)),
     ('/', (2, True)),
-    -- ('%', (2, True)),
+    ('%', (2, True)),
     ('^', (4, False)),
     ('d', (5, True))
   ]

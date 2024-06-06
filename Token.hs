@@ -3,7 +3,7 @@ module Token (Token (Operator, Function, Number, StartParen, Comma, EndParen), o
 data Token = Operator Char | Function String | Number Double | StartParen | Comma | EndParen deriving (Show, Eq)
 
 operatorSymbols :: [Char]
-operatorSymbols = ['~', '+', '-', '*', '/', '^']
+operatorSymbols = ['~', '+', '-', '*', '/', '%', '^']
 
 operatorLetters :: [Char]
 operatorLetters = ['d', 'b', 't']
