@@ -129,8 +129,9 @@ parseLED all@(x : xs) tree prec = case x of
   Operator c -> parseInfix c all xs tree prec
   _ -> (all, tree)
 
-parse :: [Token] -> ErrorProne TokenTree
-parse l
+parse :: ErrorProne [Token] -> ErrorProne TokenTree
+parse (Left e) = Left e
+parse (Right l)
   | null (fst pratt) = snd pratt
   | otherwise = Left "invalid input"
   where

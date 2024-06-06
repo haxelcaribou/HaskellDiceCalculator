@@ -5,13 +5,12 @@ import System.Random
 import Tokenizer
 
 -- TODO:
---  make dice be actually random (oh no IO)
 --  improve error messege clarity
 --  bcd float encoding???
 --  add postfix operators (just ! I think)
 
 calc :: StdGen -> String -> ErrorProne Double
-calc g s = fst <$> (evaluate g . parse . tokenize) s
+calc g = evaluate g . parse . tokenize
 
 calcToString :: ErrorProne Double -> String
 calcToString (Left e) = e

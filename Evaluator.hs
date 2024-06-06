@@ -121,19 +121,22 @@ applyFunction gen o l@(x : xs)
   | o == "max" = applyDefault gen $ maximum l
   | otherwise = Left "unknown function"
 
-evaluate :: StdGen -> ErrorProne (Tree Token) -> ErrorProne (Double, StdGen)
-evaluate _ (Left e) = Left e
-evaluate gen (Right (Leaf x)) = case x of
+evaluate :: StdGen -> ErrorProne (Tree Token) -> ErrorProne Double
+evaluate g t = fst <$> evaluate' g t
+
+evaluate' :: StdGen -> ErrorProne (Tree Token) -> ErrorProne (Double, StdGen)
+evaluate' _ (Left e) = Left e
+evaluate' gen (Right (Leaf x)) = case x of
   Number n -> Right (n, gen)
   _ -> Left "bad input"
-evaluate gen (Right (Branch x l)) = case x of
-  Operator c -> evaluate' gen l >>= (\a -> applyOperator (snd a) c (fst a))
-  Function s -> evaluate' gen l >>= (\a -> applyFunction (snd a) s (fst a))
+evaluate' gen (Right (Branch x l)) = case x of
+  Operator c -> evaluateList gen l >>= (\a -> applyOperator (snd a) c (fst a))
+  Function s -> evaluateList gen l >>= (\a -> applyFunction (snd a) s (fst a))
   _ -> Left "bad input"
 
-evaluate' :: StdGen -> [Tree Token] -> ErrorProne ([Double], StdGen)
-evaluate' g [] = Right ([], g)
-evaluate' g l@(x : xs) = do
-  a <- evaluate g (Right x)
-  b <- evaluate' (snd a) xs
+evaluateList :: StdGen -> [Tree Token] -> ErrorProne ([Double], StdGen)
+evaluateList g [] = Right ([], g)
+evaluateList g l@(x : xs) = do
+  a <- evaluate' g (Right x)
+  b <- evaluateList (snd a) xs
   Right (fst a : fst b, snd b)
