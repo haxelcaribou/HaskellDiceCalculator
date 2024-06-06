@@ -17,11 +17,30 @@ toIntegral r
   where
     i = truncate r
 
+mergeMaybe :: Maybe (Maybe a) -> Maybe a
+mergeMaybe Nothing = Nothing
+mergeMaybe (Just Nothing) = Nothing
+mergeMaybe (Just (Just x)) = Just x
+
+intFuncSingle :: (Integral a) => (a -> a) -> (Double -> Maybe Double)
+intFuncSingle f x = fromIntegral . f <$> toIntegral x
+
 intFuncSingle' :: (Integral a) => (a -> Maybe a) -> (Double -> Maybe Double)
 intFuncSingle' f x = fromIntegral <$> (toIntegral x >>= f)
 
 intFuncDouble :: (Integral a) => (a -> a -> a) -> (Double -> Double -> Maybe Double)
-intFuncDouble f a b = fromIntegral <$> ((f <$> toIntegral a) <*> toIntegral b)
+intFuncDouble f a b = fromIntegral <$> (f <$> toIntegral a <*> toIntegral b)
+
+intFuncDouble' :: (Integral a) => (a -> a -> Maybe a) -> (Double -> Double -> Maybe Double)
+intFuncDouble' f a b = fromIntegral <$> mergeMaybe (f <$> toIntegral a <*> toIntegral b)
+
+mod' :: Integral a => a -> a -> Maybe a
+mod' _ 0 = Nothing
+mod' a b = Just $ mod a b
+
+rem' :: Integral a => a -> a -> Maybe a
+rem' _ 0 = Nothing
+rem' a b = Just $ rem a b
 
 fac :: Integral a => a -> Maybe a
 fac x
@@ -38,7 +57,7 @@ applyOperator gen o [a, b]
   | o == '*' = Right $ a * b
   | o == '/' = Right $ a / b
   | o == '^' = Right $ a ** b
-  | o == '%' = errorMessege (intFuncDouble mod a b) "mod error"
+  | o == '%' = errorMessege (intFuncDouble' mod' a b) "mod error"
   | o == 'd' =
       let x = do
             num <- toIntegral a
@@ -83,8 +102,8 @@ applyFunction gen o [a, b]
   | o == "sub" = Right $ a - b
   | o == "mult" = Right $ a * b
   | o == "div" = Right $ a / b
-  | o == "mod" = errorMessege (intFuncDouble mod a b) "mod error"
-  | o == "rem" = errorMessege (intFuncDouble rem a b) "mod error"
+  | o == "mod" = errorMessege (intFuncDouble' mod' a b) "mod error"
+  | o == "rem" = errorMessege (intFuncDouble' rem' a b) "mod error"
   | o == "pow" = Right $ a ** b
   | o == "log" = Right $ logBase b a
 applyFunction gen o l@(x : xs)
