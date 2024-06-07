@@ -10,6 +10,7 @@ import System.Random
 getDiceRoll :: StdGen -> Int -> Int -> Maybe ([Int], StdGen)
 getDiceRoll g n s
   | n < 0 = Nothing
+  | s <= 0 = Nothing
   | n == 0 = Just ([], g)
   | otherwise =
       let r = randomR (1, s) g

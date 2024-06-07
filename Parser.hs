@@ -34,7 +34,8 @@ prefixOperatorPrecedence :: [(Char, Int)]
 prefixOperatorPrecedence =
   [ ('+', 3),
     ('-', 3),
-    ('~', 3)
+    ('~', 3),
+    ('d', 5)
   ]
 
 postfixOperatorPrecedence :: [(Char, Int)]

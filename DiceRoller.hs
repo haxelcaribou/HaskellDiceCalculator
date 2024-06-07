@@ -26,6 +26,7 @@ answer gen = do
   input <- getLine
   case input of
     "exit" -> print "exiting"
+    "quit" -> print "exiting"
     _ -> do
       print . calcToString . calc gen $ input
       newGen <- newStdGen

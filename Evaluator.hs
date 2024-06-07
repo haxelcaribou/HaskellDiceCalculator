@@ -74,6 +74,7 @@ applyOperator g o [a]
   | o == '+' = aDefault g a
   | o == '-' = aDefault g $ -a
   | o == '~' = aDefault g $ -a
+  | o == 'd' = applyDice g (Just 1) (toIntegral a)
   | o == '!' = (, g) <$> errorMessege (intFuncSingle' fac a) "factorial error"
 
 applyFunction :: StdGen -> String -> [Double] -> ErrorProne (Double, StdGen)
