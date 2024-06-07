@@ -1,7 +1,4 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Use tuple-section" #-}
-
+{-# LANGUAGE TupleSections #-}
 module Dice (rollDice) where
 
 import Data.Bifunctor (first, second)
@@ -24,7 +21,7 @@ rollDice g n s = first sum <$> getDiceRoll g n s
 
 -- roll n number of s sided dice dice, removing either highest or lowest r elements
 rollAndRemoveDice :: StdGen -> Int -> Int -> Int -> Bool -> Maybe (Int, StdGen)
-rollAndRemoveDice g n s r t = first sum <$> (getDiceRoll g n s >>= (\d -> (\x -> (x, snd d)) <$> removeDice (fst d) r t))
+rollAndRemoveDice g n s r t = first sum <$> (getDiceRoll g n s >>= (\d -> (, snd d) <$> removeDice (fst d) r t))
 
 -- remove highest n elements from list if t is true
 -- otherwise remove lowest n elements
