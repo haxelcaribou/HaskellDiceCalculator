@@ -1,13 +1,9 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Use first" #-}
-{-# HLINT ignore "Use second" #-}
-
 module Parser (parse) where
 
 import Error
 import Token
 import Tree
+import Data.Bifunctor (first, second)
 
 type RemTokens = [Token]
 
@@ -57,7 +53,7 @@ parseUnary t@(Operator o) l =
         Nothing -> (l, Left "unknown prefix operator")
         Just opPrec ->
           let recPratt = parseNUD l opPrec
-           in (fst recPratt, (\a -> Branch t [a]) <$> snd recPratt )
+           in second ((\ a -> Branch t [a]) <$>) recPratt
 
 parseFunction :: Token -> RemTokens -> ParseReturn
 parseFunction f [] = ([], Right (Branch f []))
@@ -81,7 +77,7 @@ parseParens [] = ([], Left "unmatched start parenthesis")
 parseParens l
   | null (fst recPratt) = ([], Left "unmatched start parenthesis")
   | otherwise = case head $ fst recPratt of
-      EndParen -> (tail (fst recPratt), snd recPratt)
+      EndParen -> first tail recPratt
       _ -> ([], Left "unmatched start parenthesis")
   where
     recPratt = parseNUD l 0

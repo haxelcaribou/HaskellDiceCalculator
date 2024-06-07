@@ -1,7 +1,6 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 {-# HLINT ignore "Use tuple-section" #-}
-{-# HLINT ignore "Use first" #-}
 
 module Evaluator (evaluate) where
 
@@ -10,6 +9,7 @@ import Error
 import System.Random
 import Token
 import Tree
+import Data.Bifunctor (first, second)
 
 errorMessege :: Maybe a -> String -> ErrorProne a
 errorMessege Nothing e = Left e
@@ -59,7 +59,7 @@ applyDefault g x = Right (x, g)
 applyDice :: StdGen -> Maybe Int -> Maybe Int -> ErrorProne (Double, StdGen)
 applyDice g Nothing _ = Left "dice error"
 applyDice g _ Nothing = Left "dice error"
-applyDice g (Just num) (Just sides) = errorMessege ((\d -> (fromIntegral (fst d), snd d)) <$> Dice.rollDice g num sides) "dice error"
+applyDice g (Just num) (Just sides) = errorMessege (first fromIntegral <$> Dice.rollDice g num sides) "dice error"
 
 applyOperator :: StdGen -> Char -> [Double] -> ErrorProne (Double, StdGen)
 applyOperator gen _ [] = Left "too few operands"
@@ -139,4 +139,4 @@ evaluateList g [] = Right ([], g)
 evaluateList g l@(x : xs) = do
   a <- evaluate' g (Right x)
   b <- evaluateList (snd a) xs
-  Right (fst a : fst b, snd b)
+  Right (first (fst a :) b)
