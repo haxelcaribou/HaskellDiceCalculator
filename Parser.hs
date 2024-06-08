@@ -11,6 +11,10 @@ type TokenTree = Tree Token
 
 type ParseReturn = ErrorProne (RemTokens, TokenTree)
 
+sequenceFst :: (ErrorProne a, b) -> ErrorProne (a, b)
+sequenceFst (Left e, _) = Left e
+sequenceFst (Right a, b) = Right (a, b)
+
 sequenceSnd :: (a, ErrorProne b) -> ErrorProne (a, b)
 sequenceSnd (_, Left e) = Left e
 sequenceSnd (a, Right b) = Right (a, b)
@@ -57,30 +61,28 @@ parseFunction f l@(x : xs) = case x of
   StartParen -> second (Branch f) <$> parseArguments xs []
   _ -> Right (l, Branch f [])
 
-parseArguments :: RemTokens -> [ErrorProne TokenTree] -> ErrorProne (RemTokens, [TokenTree])
+checkParenOrCommaNext :: [TokenTree] -> (RemTokens, TokenTree) -> ErrorProne (RemTokens, [TokenTree])
+checkParenOrCommaNext a r
+  | null (fst r) = Left "unmatched function parenthesis"
+  | otherwise = case head $ fst r of
+      Comma -> parseArguments (tail (fst r)) $ a ++ [snd r]
+      EndParen -> Right (tail (fst r), a ++ [snd r])
+      _ -> Left "unmatched function parenthesis"
+
+parseArguments :: RemTokens -> [TokenTree] -> ErrorProne (RemTokens, [TokenTree])
 parseArguments [] a = Left "unmatched function parenthesis"
-parseArguments l a =
-  parseNUD l 0
-    >>= ( \r ->
-            if null (fst r)
-              then Left "unmatched function parenthesis"
-              else case head $ fst r of
-                Comma -> parseArguments (tail (fst r)) $ a ++ [Right (snd r)]
-                EndParen -> (\x -> (tail (fst r), x ++ [snd r])) <$> sequence a
-                _ -> Left "unmatched function parenthesis"
-        )
+parseArguments l a = parseNUD l 0 >>= checkParenOrCommaNext a
+
+checkParenNext :: [Token] -> ErrorProne [Token]
+checkParenNext l
+  | null l = Left "unmatched start parenthesis"
+  | otherwise = case head l of
+      EndParen -> Right $ tail l
+      _ -> Left "unmatched start parenthesis"
 
 parseParens :: RemTokens -> ParseReturn
 parseParens [] = Left "unmatched start parenthesis"
-parseParens l =
-  parseNUD l 0
-    >>= ( \r ->
-            if null (fst r)
-              then Left "unmatched start parenthesis"
-              else case head $ fst r of
-                EndParen -> first tail (Right r)
-                _ -> Left "unmatched start parenthesis"
-        )
+parseParens l = parseNUD l 0 >>= sequenceFst . first checkParenNext
 
 parselets :: Token -> RemTokens -> ParseReturn
 parselets x xs = case x of
