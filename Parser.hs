@@ -64,30 +64,28 @@ parseFunction f l@(x : xs) = case x of
 
 parseArguments :: RemTokens -> [ErrorProne TokenTree] -> ErrorProne (RemTokens, [TokenTree])
 parseArguments [] a = Left "unmatched function parenthesis"
-parseArguments l a = case recPratt' of
-  Left e -> Left e
-  Right recPratt ->
-    if null (fst recPratt)
-      then Left "unmatched function parenthesis"
-      else case head $ fst recPratt of
-        Comma -> parseArguments (tail (fst recPratt)) $ a ++ [Right (snd recPratt)]
-        EndParen -> (\x -> (tail (fst recPratt), x ++ [snd recPratt])) <$> sequence a
-        _ -> Left "unmatched function parenthesis"
-  where
-    recPratt' = parseNUD l 0
+parseArguments l a =
+  parseNUD l 0
+    >>= ( \r ->
+            if null (fst r)
+              then Left "unmatched function parenthesis"
+              else case head $ fst r of
+                Comma -> parseArguments (tail (fst r)) $ a ++ [Right (snd r)]
+                EndParen -> (\x -> (tail (fst r), x ++ [snd r])) <$> sequence a
+                _ -> Left "unmatched function parenthesis"
+        )
 
 parseParens :: RemTokens -> ParseReturn
 parseParens [] = Left "unmatched start parenthesis"
-parseParens l = case recPratt' of
-  Left e -> Left e
-  Right recPratt ->
-    if null (fst recPratt)
-      then Left "unmatched start parenthesis"
-      else case head $ fst recPratt of
-        EndParen -> first tail (Right recPratt)
-        _ -> Left "unmatched start parenthesis"
-  where
-    recPratt' = parseNUD l 0
+parseParens l =
+  parseNUD l 0
+    >>= ( \r ->
+            if null (fst r)
+              then Left "unmatched start parenthesis"
+              else case head $ fst r of
+                EndParen -> first tail (Right r)
+                _ -> Left "unmatched start parenthesis"
+        )
 
 parselets :: Token -> RemTokens -> ParseReturn
 parselets x xs = case x of
@@ -127,11 +125,4 @@ parseLED all@(x : xs) tree prec = case x of
 
 parse :: ErrorProne [Token] -> ErrorProne TokenTree
 parse (Left e) = Left e
-parse (Right l) = case pratt' of
-  Left e -> Left e
-  Right pratt ->
-    if null (fst pratt)
-      then Right $ snd pratt
-      else Left "invalid input"
-  where
-    pratt' = parseNUD l 0
+parse (Right l) = parseNUD l 0 >>= (\p -> if null (fst p) then Right $ snd p else Left "invalid input")
