@@ -95,7 +95,7 @@ parselets x xs = case x of
 
 parseNUD :: RemTokens -> Int -> ParseReturn
 parseNUD [] prec = Left "empty parser input"
-parseNUD (x : xs) prec = parselets x xs >>= (\a -> uncurry parseLED a prec)
+parseNUD (x : xs) prec = parselets x xs >>= uncurry (parseLED prec)
 
 parseInfix :: Char -> RemTokens -> RemTokens -> TokenTree -> Int -> ParseReturn
 parseInfix o lLess lMore tree prec =
@@ -109,11 +109,11 @@ parseInfix' o lLess lMore tree prec opPrec opAsc =
 parseInfix'' :: Char -> RemTokens -> TokenTree -> Int -> Int -> Bool -> (RemTokens, Tree Token) -> ParseReturn
 parseInfix'' o lLess tree prec opPrec opAsc r
   | opPrec < prec || (opPrec == prec && opAsc) = Right (lLess, tree)
-  | otherwise = parseLED (fst r) (Branch (Operator o) [tree, snd r]) prec
+  | otherwise = parseLED prec (fst r) (Branch (Operator o) [tree, snd r])
 
-parseLED :: RemTokens -> TokenTree -> Int -> ParseReturn
-parseLED [] tree prec = Right ([], tree)
-parseLED all@(x : xs) tree prec = case x of
+parseLED :: Int -> RemTokens -> TokenTree -> ParseReturn
+parseLED prec [] tree = Right ([], tree)
+parseLED prec all@(x : xs) tree = case x of
   StartParen -> parseInfix '*' all all tree prec
   Operator c -> parseInfix c all xs tree prec
   _ -> Right (all, tree)
