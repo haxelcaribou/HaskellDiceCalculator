@@ -54,9 +54,9 @@ aDefault :: StdGen -> Double -> ErrorProne (Double, StdGen)
 aDefault g x = Right (x, g)
 
 applyDice :: StdGen -> Maybe Int -> Maybe Int -> ErrorProne (Double, StdGen)
-applyDice g Nothing _ = Left "dice error"
-applyDice g _ Nothing = Left "dice error"
-applyDice g (Just num) (Just sides) = errorMessege (first fromIntegral <$> Dice.rollDice g num sides) "dice error"
+applyDice g Nothing _ = Left "dice input must be an integer"
+applyDice g _ Nothing = Left "dice input must be an integer"
+applyDice g (Just num) (Just sides) = first fromIntegral <$> Dice.rollDice g num sides
 
 applyOperator :: StdGen -> Char -> [Double] -> ErrorProne (Double, StdGen)
 applyOperator g _ [] = Left "too few operands"
@@ -67,7 +67,7 @@ applyOperator g o [a, b]
   | o == '*' = aDefault g $ a * b
   | o == '/' = aDefault g $ a / b
   | o == '^' = aDefault g $ a ** b
-  | o == '%' = (, g) <$> errorMessege (intFuncDouble' mod' a b) "mod error"
+  | o == '%' = (, g) <$> errorMessege (intFuncDouble' mod' a b) "mod input must be an integer with a nonzero dividend"
   | o == 'd' = applyDice g (toIntegral a) (toIntegral b)
   | otherwise = Left "unknown operator"
 applyOperator g o [a]
@@ -75,7 +75,7 @@ applyOperator g o [a]
   | o == '-' = aDefault g $ -a
   | o == '~' = aDefault g $ -a
   | o == 'd' = applyDice g (Just 1) (toIntegral a)
-  | o == '!' = (, g) <$> errorMessege (intFuncSingle' fac a) "factorial error"
+  | o == '!' = (, g) <$> errorMessege (intFuncSingle' fac a) "factorial input must be a positive integer"
 
 applyFunction :: StdGen -> String -> [Double] -> ErrorProne (Double, StdGen)
 applyFunction g o []
@@ -94,7 +94,7 @@ applyFunction g o [x]
   | o == "sqrt" = aDefault g $ sqrt x
   | o == "ln" = aDefault g $ log x
   | o == "log" = aDefault g $ logBase 10 x
-  | o == "fac" = (, g) <$> errorMessege (intFuncSingle' fac x) "factorial error"
+  | o == "fac" = (, g) <$> errorMessege (intFuncSingle' fac x) "factorial input must be a positive integer"
   | o == "sin" = aDefault g $ sin x
   | o == "tan" = aDefault g $ tan x
   | o == "cos" = aDefault g $ cos x
@@ -108,8 +108,8 @@ applyFunction g o [a, b]
   | o == "sub" = aDefault g $ a - b
   | o == "mult" = aDefault g $ a * b
   | o == "div" = aDefault g $ a / b
-  | o == "mod" = (, g) <$> errorMessege (intFuncDouble' mod' a b) "mod error"
-  | o == "rem" = (, g) <$> errorMessege (intFuncDouble' rem' a b) "mod error"
+  | o == "mod" = (, g) <$> errorMessege (intFuncDouble' mod' a b) "mod input must be an integer with a nonzero dividend"
+  | o == "rem" = (, g) <$> errorMessege (intFuncDouble' rem' a b) "mod input must be an integer with a nonzero dividend"
   | o == "pow" = aDefault g $ a ** b
   | o == "log" = aDefault g $ logBase b a
 applyFunction g o l@(x : xs)

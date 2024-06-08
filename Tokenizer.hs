@@ -1,6 +1,7 @@
 module Tokenizer (tokenize) where
-import Token
+
 import Error
+import Token
 
 letters :: [Char]
 letters = ['a' .. 'z'] ++ ['A' .. 'Z']
@@ -8,11 +9,20 @@ letters = ['a' .. 'z'] ++ ['A' .. 'Z']
 digits :: [Char]
 digits = ['0' .. '9']
 
-pullDouble :: String -> String -> (Double, String)
-pullDouble f [] = (read f :: Double, "")
+pullDouble :: String -> String -> ErrorProne (Double, String)
+pullDouble f [] = Right (read f :: Double, "")
 pullDouble f l@(c : cs)
-  | c `elem` '.' : digits = pullDouble (f ++ [c]) cs
-  | otherwise = (read f :: Double, l)
+  | c == '.' && null f = pullDouble' "0." cs
+  | c == '.' = pullDouble' (f ++ ".") cs
+  | c `elem` digits = pullDouble (f ++ [c]) cs
+  | otherwise = Right (read f :: Double, l)
+
+pullDouble' :: String -> String -> ErrorProne (Double, String)
+pullDouble' f [] = Right (read (f ++ "0") :: Double, "")
+pullDouble' f l@(c : cs)
+  | c == '.' = Left "multiple decimal points in number"
+  | c `elem` digits = pullDouble' (f ++ [c]) cs
+  | otherwise = Right (read (f ++ "0") :: Double, l)
 
 pullString :: String -> String -> (String, String)
 pullString s [] = (s, "")
@@ -29,6 +39,6 @@ tokenize l@(c : cs)
   | c == ',' = (Comma :) <$> tokenize cs
   | c == ')' = (EndParen :) <$> tokenize cs
   | c `elem` letters = let (f, s) = pullString "" l in (Function f :) <$> tokenize s
-  | c `elem` '.' : digits = let (f, s) = pullDouble "" l in (Number f :) <$> tokenize s
+  | c `elem` '.' : digits = pullDouble "" l >>= (\d -> (Number (fst d) :) <$> tokenize (snd d))
   | c == ' ' = tokenize cs
   | otherwise = Left "unrecognized token"
