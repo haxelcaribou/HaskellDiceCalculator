@@ -8,6 +8,10 @@ import Token
 import Tree
 import Data.Bifunctor (first, second)
 
+sequenceFst :: (ErrorProne a, b) -> ErrorProne (a , b)
+sequenceFst (Left e, _) = Left e
+sequenceFst (Right a, b) = Right (a, b)
+
 errorMessege :: Maybe a -> String -> ErrorProne a
 errorMessege Nothing e = Left e
 errorMessege (Just x) _ = Right x

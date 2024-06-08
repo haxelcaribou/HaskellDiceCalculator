@@ -1,15 +1,21 @@
+{-# LANGUAGE TupleSections #-}
+
 module Parser (parse) where
 
+import Data.Bifunctor (first, second)
 import Error
 import Token
 import Tree
-import Data.Bifunctor (first, second)
 
 type RemTokens = [Token]
 
 type TokenTree = Tree Token
 
-type ParseReturn = (RemTokens, ErrorProne TokenTree)
+type ParseReturn = ErrorProne (RemTokens, TokenTree)
+
+sequenceSnd :: (a, ErrorProne b) -> ErrorProne (a, b)
+sequenceSnd (_, Left e) = Left e
+sequenceSnd (a, Right b) = Right (a, b)
 
 fromMaybe :: a -> Maybe a -> a
 fromMaybe x Nothing = x
@@ -43,45 +49,51 @@ postfixOperatorPrecedence =
   [('!', 4)]
 
 parseNumber :: Token -> RemTokens -> ParseReturn
-parseNumber x@(Number _) l = (l, Right (Leaf x))
-parseNumber _ _ = ([], Left "not a number")
+parseNumber x@(Number _) l = Right (l, Leaf x)
+parseNumber _ _ = Left "not a number"
 
 parseUnary :: Token -> RemTokens -> ParseReturn
-parseUnary o [] = ([], Left "invalid input")
+parseUnary o [] = Left "invalid input"
 parseUnary t@(Operator o) l =
   let opPrec' = lookup o prefixOperatorPrecedence
    in case opPrec' of
-        Nothing -> (l, Left "unknown prefix operator")
+        Nothing -> Left "unknown prefix operator"
         Just opPrec ->
           let recPratt = parseNUD l opPrec
-           in second ((\ a -> Branch t [a]) <$>) recPratt
+           in second ((\a -> Branch t [a]) <$>) recPratt
 
 parseFunction :: Token -> RemTokens -> ParseReturn
-parseFunction f [] = ([], Right (Branch f []))
+parseFunction f [] = Right ([], Branch f [])
 parseFunction f l@(x : xs) = case x of
-  StartParen -> let argsReturn = parseArguments xs [] in (fst argsReturn, Branch f <$> sequence (snd argsReturn))
-  _ -> (l, Right (Branch f []))
+  StartParen -> second (Branch f) <$> parseArguments xs []
+  _ -> Right (l, Branch f [])
 
-parseArguments :: RemTokens -> [ErrorProne TokenTree] -> (RemTokens, [ErrorProne TokenTree])
-parseArguments [] a = ([], a ++ [Left "unmatched function parenthesis in "])
-parseArguments l a
-  | null (fst recPratt) = ([], [Left "unmatched function parenthesis"])
-  | otherwise = case head $ fst recPratt of
-      Comma -> parseArguments (tail (fst recPratt)) $ a ++ [snd recPratt]
-      EndParen -> (tail (fst recPratt), a ++ [snd recPratt])
-      _ -> ([], a ++ [Left "unmatched function parenthesis"])
+parseArguments :: RemTokens -> [ErrorProne TokenTree] -> ErrorProne (RemTokens, [TokenTree])
+parseArguments [] a = Left "unmatched function parenthesis"
+parseArguments l a = case recPratt' of
+  Left e -> Left e
+  Right recPratt ->
+    if null (fst recPratt)
+      then Left "unmatched function parenthesis"
+      else case head $ fst recPratt of
+        Comma -> parseArguments (tail (fst recPratt)) $ a ++ [Right (snd recPratt)]
+        EndParen -> (\x -> (tail (fst recPratt), x ++ [snd recPratt])) <$> sequence a
+        _ -> Left "unmatched function parenthesis"
   where
-    recPratt = parseNUD l 0
+    recPratt' = parseNUD l 0
 
 parseParens :: RemTokens -> ParseReturn
-parseParens [] = ([], Left "unmatched start parenthesis")
-parseParens l
-  | null (fst recPratt) = ([], Left "unmatched start parenthesis")
-  | otherwise = case head $ fst recPratt of
-      EndParen -> first tail recPratt
-      _ -> ([], Left "unmatched start parenthesis")
+parseParens [] = Left "unmatched start parenthesis"
+parseParens l = case recPratt' of
+  Left e -> Left e
+  Right recPratt ->
+    if null (fst recPratt)
+      then Left "unmatched start parenthesis"
+      else case head $ fst recPratt of
+        EndParen -> first tail (Right recPratt)
+        _ -> Left "unmatched start parenthesis"
   where
-    recPratt = parseNUD l 0
+    recPratt' = parseNUD l 0
 
 parselets :: Token -> RemTokens -> ParseReturn
 parselets x xs = case x of
@@ -89,47 +101,44 @@ parselets x xs = case x of
   Operator _ -> parseUnary x xs
   Function _ -> parseFunction x xs
   StartParen -> parseParens xs
-  EndParen -> ([], Left "unmatched end parenthesis")
-  _ -> ([], Left "invalid input")
+  EndParen -> Left "unmatched end parenthesis"
+  _ -> Left "invalid input"
 
 parseNUD :: RemTokens -> Int -> ParseReturn
-parseNUD [] prec = ([], Left "empty parser input")
-parseNUD (x : xs) prec = uncurry parseLED (parselets x xs) prec
+parseNUD [] prec = Left "empty parser input"
+parseNUD (x : xs) prec = parselets x xs >>= (\a -> uncurry parseLED a prec)
 
-parseInfix :: Char -> RemTokens -> RemTokens -> ErrorProne TokenTree -> Int -> ParseReturn
+parseInfix :: Char -> RemTokens -> RemTokens -> TokenTree -> Int -> ParseReturn
 -- parseInfix _ l _ (Left e) _ = (l, Left e)
 parseInfix o lLess lMore tree prec =
   let opInfoMaybe = lookup o infixOperatorPrecedence
    in case opInfoMaybe of
-        Nothing -> (lLess, Left "unknown infix operator")
+        Nothing -> Left "unknown infix operator"
         Just opInfo ->
           let opPrec = fst opInfo
               opAsc = snd opInfo
-              recPratt = parseNUD lMore opPrec
-           in if opPrec < prec || (opPrec == prec && opAsc)
-                then (lLess, tree)
-                else
-                  parseLED
-                    (fst recPratt)
-                    ( do
-                        a <- tree
-                        b <- snd recPratt
-                        Right (Branch (Operator o) [a, b])
-                    )
-                    prec
+              recPratt' = parseNUD lMore opPrec
+           in case recPratt' of
+                Left e -> Left e
+                Right recPratt ->
+                  if opPrec < prec || (opPrec == prec && opAsc)
+                    then Right (lLess, tree)
+                    else parseLED (fst recPratt) (Branch (Operator o) [tree, snd recPratt]) prec
 
-parseLED :: RemTokens -> ErrorProne TokenTree -> Int -> ParseReturn
+parseLED :: RemTokens -> TokenTree -> Int -> ParseReturn
 -- parseLED l (Left e) _ = (l, Left e)
-parseLED [] tree prec = ([], tree)
+parseLED [] tree prec = Right ([], tree)
 parseLED all@(x : xs) tree prec = case x of
   StartParen -> parseInfix '*' all all tree prec
   Operator c -> parseInfix c all xs tree prec
-  _ -> (all, tree)
+  _ -> Right (all, tree)
 
 parse :: ErrorProne [Token] -> ErrorProne TokenTree
 parse (Left e) = Left e
-parse (Right l)
-  | null (fst pratt) = snd pratt
-  | otherwise = Left "invalid input"
+parse (Right l) = case pratt' of
+  Left e -> Left e
+  Right pratt ->
+    if null (fst pratt) then Right $ snd pratt
+    else Left "invalid input"
   where
-    pratt = parseNUD l 0
+    pratt' = parseNUD l 0
