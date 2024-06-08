@@ -50,91 +50,91 @@ fac x
   | x == 0 = Just 1
   | otherwise = (x *) <$> fac (x - 1)
 
-aDefault :: StdGen -> Double -> ErrorProne (Double, StdGen)
-aDefault g x = Right (x, g)
+aDefault :: Double -> StdGen -> ErrorProne (Double, StdGen)
+aDefault x g = Right (x, g)
 
-applyDice :: StdGen -> Maybe Int -> Maybe Int -> ErrorProne (Double, StdGen)
-applyDice g Nothing _ = Left "dice input must be an integer"
-applyDice g _ Nothing = Left "dice input must be an integer"
-applyDice g (Just num) (Just sides) = first fromIntegral <$> Dice.rollDice g num sides
+applyDice :: Maybe Int -> Maybe Int -> StdGen -> ErrorProne (Double, StdGen)
+applyDice Nothing _ g = Left "dice input must be an integer"
+applyDice _ Nothing g = Left "dice input must be an integer"
+applyDice (Just num) (Just sides) g = first fromIntegral <$> Dice.rollDice num sides g
 
-applyOperator :: StdGen -> Char -> [Double] -> ErrorProne (Double, StdGen)
-applyOperator g _ [] = Left "too few operands"
-applyOperator g _ (a : b : c : xs) = Left "too many operands"
-applyOperator g o [a, b]
-  | o == '+' = aDefault g $ a + b
-  | o == '-' = aDefault g $ a - b
-  | o == '*' = aDefault g $ a * b
-  | o == '/' = aDefault g $ a / b
-  | o == '^' = aDefault g $ a ** b
+applyOperator :: Char -> [Double] -> StdGen -> ErrorProne (Double, StdGen)
+applyOperator _ [] g = Left "too few operands"
+applyOperator _ (a : b : c : xs) g = Left "too many operands"
+applyOperator o [a, b] g
+  | o == '+' = aDefault (a + b) g
+  | o == '-' = aDefault (a - b) g
+  | o == '*' = aDefault (a * b) g
+  | o == '/' = aDefault (a / b) g
+  | o == '^' = aDefault (a ** b) g
   | o == '%' = (, g) <$> errorMessege (intFuncDouble' mod' a b) "mod input must be an integer with a nonzero dividend"
-  | o == 'd' = applyDice g (toIntegral a) (toIntegral b)
+  | o == 'd' = applyDice (toIntegral a) (toIntegral b) g
   | otherwise = Left "unknown operator"
-applyOperator g o [a]
-  | o == '+' = aDefault g a
-  | o == '-' = aDefault g $ -a
-  | o == '~' = aDefault g $ -a
-  | o == 'd' = applyDice g (Just 1) (toIntegral a)
+applyOperator o [a] g
+  | o == '+' = aDefault a g
+  | o == '-' = aDefault (-a) g
+  | o == '~' = aDefault (-a) g
+  | o == 'd' = applyDice (Just 1) (toIntegral a) g
   | o == '!' = (, g) <$> errorMessege (intFuncSingle' fac a) "factorial input must be a positive integer"
 
-applyFunction :: StdGen -> String -> [Double] -> ErrorProne (Double, StdGen)
-applyFunction g o []
-  | o == "pi" = aDefault g pi
-  | o == "e" = aDefault g $ exp 1
+applyFunction :: String -> [Double] -> StdGen -> ErrorProne (Double, StdGen)
+applyFunction o [] g
+  | o == "pi" = aDefault pi g
+  | o == "e" = aDefault (exp 1) g
   | otherwise = Left "unknown constant"
-applyFunction g o [x]
-  | o == "negate" = aDefault g $ negate x
-  | o == "abs" = aDefault g $ abs x
-  | o == "sign" = aDefault g $ signum x
-  | o == "round" = aDefault g $ fromIntegral $ round x
-  | o == "trunc" = aDefault g $ fromIntegral $ truncate x
-  | o == "floor" = aDefault g $ fromIntegral $ floor x
-  | o == "ceil" = aDefault g $ fromIntegral $ ceiling x
-  | o == "exp" = aDefault g $ exp x
-  | o == "sqrt" = aDefault g $ sqrt x
-  | o == "ln" = aDefault g $ log x
-  | o == "log" = aDefault g $ logBase 10 x
+applyFunction o [x] g
+  | o == "negate" = aDefault (negate x) g
+  | o == "abs" = aDefault (abs x) g
+  | o == "sign" = aDefault (signum x) g
+  | o == "round" = aDefault (fromIntegral $ round x) g
+  | o == "trunc" = aDefault (fromIntegral $ truncate x) g
+  | o == "floor" = aDefault (fromIntegral $ floor x) g
+  | o == "ceil" = aDefault (fromIntegral $ ceiling x) g
+  | o == "exp" = aDefault (exp x) g
+  | o == "sqrt" = aDefault (sqrt x) g
+  | o == "ln" = aDefault (log x) g
+  | o == "log" = aDefault (logBase 10 x) g
   | o == "fac" = (, g) <$> errorMessege (intFuncSingle' fac x) "factorial input must be a positive integer"
-  | o == "sin" = aDefault g $ sin x
-  | o == "tan" = aDefault g $ tan x
-  | o == "cos" = aDefault g $ cos x
-  | o == "asin" = aDefault g $ asin x
-  | o == "atan" = aDefault g $ atan x
-  | o == "acos" = aDefault g $ acos x
-  | o == "rad" = aDefault g $ x / 180 * pi
-  | o == "deg" = aDefault g $ x / pi * 180
-applyFunction g o [a, b]
-  | o == "add" = aDefault g $ a + b
-  | o == "sub" = aDefault g $ a - b
-  | o == "mult" = aDefault g $ a * b
-  | o == "div" = aDefault g $ a / b
+  | o == "sin" = aDefault (sin x) g
+  | o == "tan" = aDefault (tan x) g
+  | o == "cos" = aDefault (cos x) g
+  | o == "asin" = aDefault (asin x) g
+  | o == "atan" = aDefault (atan x) g
+  | o == "acos" = aDefault (acos x) g
+  | o == "rad" = aDefault (x / 180 * pi) g
+  | o == "deg" = aDefault (x / pi * 180) g
+applyFunction o [a, b] g
+  | o == "add" = aDefault (a + b) g
+  | o == "sub" = aDefault (a - b) g
+  | o == "mult" = aDefault (a * b) g
+  | o == "div" = aDefault (a / b) g
   | o == "mod" = (, g) <$> errorMessege (intFuncDouble' mod' a b) "mod input must be an integer with a nonzero dividend"
   | o == "rem" = (, g) <$> errorMessege (intFuncDouble' rem' a b) "mod input must be an integer with a nonzero dividend"
-  | o == "pow" = aDefault g $ a ** b
-  | o == "log" = aDefault g $ logBase b a
-applyFunction g o l@(x : xs)
-  | o == "sum" = aDefault g $ sum l
-  | o == "prod" = aDefault g $ product l
-  | o == "min" = aDefault g $ minimum l
-  | o == "max" = aDefault g $ maximum l
+  | o == "pow" = aDefault (a ** b) g
+  | o == "log" = aDefault (logBase b a) g
+applyFunction o l@(x : xs) g
+  | o == "sum" = aDefault (sum l) g
+  | o == "prod" = aDefault (product l) g
+  | o == "min" = aDefault (minimum l) g
+  | o == "max" = aDefault (maximum l) g
   | otherwise = Left "unknown function"
 
-evaluate :: StdGen -> ErrorProne (Tree Token) -> ErrorProne Double
-evaluate g t = fst <$> evaluate' g t
+evaluate :: ErrorProne (Tree Token) -> StdGen -> ErrorProne Double
+evaluate t g = fst <$> evaluate' t g
 
-evaluate' :: StdGen -> ErrorProne (Tree Token) -> ErrorProne (Double, StdGen)
-evaluate' _ (Left e) = Left e
-evaluate' g (Right (Leaf x)) = case x of
+evaluate' :: ErrorProne (Tree Token) -> StdGen -> ErrorProne (Double, StdGen)
+evaluate' (Left e) _ = Left e
+evaluate' (Right (Leaf x)) g = case x of
   Number n -> Right (n, g)
   _ -> Left "bad input"
-evaluate' g (Right (Branch x l)) = case x of
-  Operator c -> evaluateList g l >>= (\a -> applyOperator (snd a) c (fst a))
-  Function s -> evaluateList g l >>= (\a -> applyFunction (snd a) s (fst a))
+evaluate' (Right (Branch x l)) g = case x of
+  Operator c -> evaluateList l g >>= uncurry (applyOperator c)
+  Function s -> evaluateList l g >>= uncurry (applyFunction s)
   _ -> Left "bad input"
 
-evaluateList :: StdGen -> [Tree Token] -> ErrorProne ([Double], StdGen)
-evaluateList g [] = Right ([], g)
-evaluateList g l@(x : xs) = do
-  a <- evaluate' g (Right x)
-  b <- evaluateList (snd a) xs
+evaluateList :: [Tree Token] -> StdGen -> ErrorProne ([Double], StdGen)
+evaluateList [] g = Right ([], g)
+evaluateList l@(x : xs) g = do
+  a <- evaluate' (Right x) g
+  b <- evaluateList xs (snd a)
   Right (first (fst a :) b)

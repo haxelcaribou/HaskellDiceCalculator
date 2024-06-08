@@ -12,11 +12,11 @@ import Tokenizer
 --  bcd float encoding???
 --  add postfix operators (just ! I think)
 
-calc :: StdGen -> String -> ErrorProne Double
-calc g = evaluate g . parse . tokenize
+calc :: String -> StdGen -> ErrorProne Double
+calc = evaluate . parse . tokenize
 
 calcToString :: ErrorProne Double -> String
-calcToString (Left e) = e
+calcToString (Left e) = "error: " ++ e
 calcToString (Right n) = show n
 
 answer :: StdGen -> IO ()
@@ -25,10 +25,10 @@ answer gen = do
   hFlush stdout
   input <- getLine
   case input of
-    "exit" -> print "exiting"
-    "quit" -> print "exiting"
+    "exit" -> putStrLn "exiting"
+    "quit" -> putStrLn "exiting"
     _ -> do
-      print . calcToString . calc gen $ input
+      putStrLn $ calcToString $ calc input gen
       newGen <- newStdGen
       answer newGen
 
