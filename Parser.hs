@@ -15,13 +15,8 @@ sequenceSnd :: (a, ErrorProne b) -> ErrorProne (a, b)
 sequenceSnd (_, Left e) = Left e
 sequenceSnd (a, Right b) = Right (a, b)
 
-fromMaybe :: a -> Maybe a -> a
-fromMaybe x Nothing = x
-fromMaybe _ (Just x) = x
-
 errorMessege :: Maybe a -> String -> ErrorProne a
-errorMessege Nothing e = Left e
-errorMessege (Just x) _ = Right x
+errorMessege m s = maybe (Left s) Right m
 
 infixOperatorPrecedence :: [(Char, (Int, Bool))]
 infixOperatorPrecedence =

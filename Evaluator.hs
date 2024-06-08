@@ -13,8 +13,7 @@ sequenceFst (Left e, _) = Left e
 sequenceFst (Right a, b) = Right (a, b)
 
 errorMessege :: Maybe a -> String -> ErrorProne a
-errorMessege Nothing e = Left e
-errorMessege (Just x) _ = Right x
+errorMessege m s = maybe (Left s) Right m
 
 toIntegral :: (RealFrac a, Integral b) => a -> Maybe b
 toIntegral r
