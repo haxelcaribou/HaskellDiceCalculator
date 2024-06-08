@@ -103,14 +103,14 @@ parseInfix o lLess lMore tree prec =
   errorMessege (lookup o infixOperatorPrecedence) "unknown infix operator"
     >>= uncurry (parseInfix' o lLess lMore tree prec)
 
-parseInfix' :: Char -> RemTokens -> RemTokens -> TokenTree -> Int -> Int -> Bool -> Either Error (RemTokens, TokenTree)
+parseInfix' :: Char -> RemTokens -> RemTokens -> TokenTree -> Int -> Int -> Bool -> ParseReturn
 parseInfix' o lLess lMore tree prec opPrec opAsc =
-  parseNUD lMore opPrec
-    >>= ( \r ->
-            if opPrec < prec || (opPrec == prec && opAsc)
-              then Right (lLess, tree)
-              else parseLED (fst r) (Branch (Operator o) [tree, snd r]) prec
-        )
+  parseNUD lMore opPrec >>= parseInfix'' o lLess tree prec opPrec opAsc
+
+parseInfix'' :: Char -> RemTokens -> TokenTree -> Int -> Int -> Bool -> (RemTokens, Tree Token) -> ParseReturn
+parseInfix'' o lLess tree prec opPrec opAsc r
+  | opPrec < prec || (opPrec == prec && opAsc) = Right (lLess, tree)
+  | otherwise = parseLED (fst r) (Branch (Operator o) [tree, snd r]) prec
 
 parseLED :: RemTokens -> TokenTree -> Int -> ParseReturn
 -- parseLED l (Left e) _ = (l, Left e)
