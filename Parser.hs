@@ -98,7 +98,6 @@ parseNUD [] prec = Left "empty parser input"
 parseNUD (x : xs) prec = parselets x xs >>= (\a -> uncurry parseLED a prec)
 
 parseInfix :: Char -> RemTokens -> RemTokens -> TokenTree -> Int -> ParseReturn
--- parseInfix _ l _ (Left e) _ = (l, Left e)
 parseInfix o lLess lMore tree prec =
   errorMessege (lookup o infixOperatorPrecedence) "unknown infix operator"
     >>= uncurry (parseInfix' o lLess lMore tree prec)
@@ -113,7 +112,6 @@ parseInfix'' o lLess tree prec opPrec opAsc r
   | otherwise = parseLED (fst r) (Branch (Operator o) [tree, snd r]) prec
 
 parseLED :: RemTokens -> TokenTree -> Int -> ParseReturn
--- parseLED l (Left e) _ = (l, Left e)
 parseLED [] tree prec = Right ([], tree)
 parseLED all@(x : xs) tree prec = case x of
   StartParen -> parseInfix '*' all all tree prec
