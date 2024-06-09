@@ -33,6 +33,11 @@ infixOperatorPrecedence =
     ('d', (5, True))
   ]
 
+ternaryOperators :: [(Char, ([Char], Bool))]
+ternaryOperators =
+  [ ('d', (['t', 'b'], True))
+  ]
+
 prefixOperatorPrecedence :: [(Char, Int)]
 prefixOperatorPrecedence =
   [ ('+', 3),
@@ -51,9 +56,9 @@ parseNumber _ _ = Left "not a number"
 
 parseUnary :: Token -> RemTokens -> ParseReturn
 parseUnary o [] = Left "invalid input"
-parseUnary t@(Operator o) l =
-  errorMessege (lookup o prefixOperatorPrecedence) "unknown prefix operator"
-    >>= second ((\a -> Branch t [a]) <$>) . parseNUD l
+parseUnary t@(Operator o) l = do
+  x <- errorMessege (lookup o prefixOperatorPrecedence) ("unknown prefix operator '" ++ [o] ++ "'")
+  second (\a -> Branch t [a]) <$> parseNUD l x
 
 parseFunction :: Token -> RemTokens -> ParseReturn
 parseFunction f [] = Right ([], Branch f [])
@@ -62,11 +67,11 @@ parseFunction f l@(x : xs) = case x of
   _ -> Right (l, Branch f [])
 
 checkParenOrCommaNext :: [TokenTree] -> (RemTokens, TokenTree) -> ErrorProne (RemTokens, [TokenTree])
-checkParenOrCommaNext a r
-  | null (fst r) = Left "unmatched function parenthesis"
-  | otherwise = case head $ fst r of
-      Comma -> parseArguments (tail (fst r)) $ a ++ [snd r]
-      EndParen -> Right (tail (fst r), a ++ [snd r])
+checkParenOrCommaNext l (rem, tree)
+  | null rem = Left "unmatched function parenthesis"
+  | otherwise = case head rem of
+      Comma -> parseArguments (tail rem) $ l ++ [tree]
+      EndParen -> Right (tail rem, l ++ [tree])
       _ -> Left "unmatched function parenthesis"
 
 parseArguments :: RemTokens -> [TokenTree] -> ErrorProne (RemTokens, [TokenTree])
@@ -97,21 +102,42 @@ parseNUD :: RemTokens -> Int -> ParseReturn
 parseNUD [] prec = Left "empty parser input"
 parseNUD (x : xs) prec = parselets x xs >>= uncurry (parseLED prec)
 
+parseTernary :: Char -> RemTokens -> [TokenTree] -> Int -> ParseReturn
+parseTernary o r trees prec =
+  let opInfo' = lookup o ternaryOperators
+   in case opInfo' of
+        Nothing -> parseLED prec r (Branch (Operator o) trees)
+        Just (sndOps, canSolo) ->
+          if null r || head r `notElem` map Operator sndOps
+            then
+              if canSolo
+                then parseLED prec r (Branch (Operator o) trees)
+                else Left $ "unmatched ternary operator '" ++ [o] ++ "'"
+            else do
+              (rem, tree) <- parseNUD (tail r) prec
+              parseLED prec rem (Branch (head r) (trees ++ [tree]))
+
 parseInfix :: Char -> RemTokens -> RemTokens -> TokenTree -> Int -> ParseReturn
 parseInfix o lLess lMore tree prec = do
-  (opPrec, opAsc) <- errorMessege (lookup o infixOperatorPrecedence) "unknown infix operator"
-  nud <- parseNUD lMore opPrec
+  (opPrec, opAsc) <- errorMessege (lookup o infixOperatorPrecedence) ("unknown infix operator '" ++ [o] ++ "'")
+  (rem, tree') <- parseNUD lMore opPrec
   if opPrec < prec || (opPrec == prec && opAsc)
     then Right (lLess, tree)
-    else parseLED prec (fst nud) (Branch (Operator o) [tree, snd nud])
+    else parseTernary o rem [tree, tree'] prec
 
 parseLED :: Int -> RemTokens -> TokenTree -> ParseReturn
 parseLED prec [] tree = Right ([], tree)
 parseLED prec all@(x : xs) tree = case x of
   StartParen -> parseInfix '*' all all tree prec
-  Operator c -> parseInfix c all xs tree prec
+  Operator c -> if c `elem` map fst infixOperatorPrecedence
+    then parseInfix c all xs tree prec
+    else Right (all, tree)
   _ -> Right (all, tree)
 
 parse :: ErrorProne [Token] -> ErrorProne TokenTree
 parse (Left e) = Left e
-parse (Right l) = parseNUD l 0 >>= (\p -> if null (fst p) then Right $ snd p else Left "invalid input")
+parse (Right l) = do
+  p <- parseNUD l 0
+  if null (fst p)
+    then Right $ snd p
+    else Left "invalid input"

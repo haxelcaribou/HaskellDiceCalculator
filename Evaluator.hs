@@ -57,13 +57,21 @@ aDefault :: Double -> StdGen -> ErrorProne (Double, StdGen)
 aDefault x g = Right (x, g)
 
 applyDice :: Maybe Int -> Maybe Int -> StdGen -> ErrorProne (Double, StdGen)
-applyDice Nothing _ g = Left "dice input must be an integer"
-applyDice _ Nothing g = Left "dice input must be an integer"
-applyDice (Just num) (Just sides) g = first fromIntegral <$> Dice.rollDice num sides g
+applyDice Nothing _ _ = Left "dice input must be an integer"
+applyDice _ Nothing _ = Left "dice input must be an integer"
+applyDice (Just n) (Just s) g = first fromIntegral <$> rollDice n s g
+
+applyDiceRemove :: Maybe Int -> Maybe Int -> Maybe Int -> Bool -> StdGen -> ErrorProne (Double, StdGen)
+applyDiceRemove Nothing _ _ _ _ = Left "dice input must be an integer"
+applyDiceRemove _ Nothing _ _ _ = Left "dice input must be an integer"
+applyDiceRemove _ _ Nothing _ _ = Left "dice input must be an integer"
+applyDiceRemove (Just n) (Just s) (Just r) t g = first fromIntegral <$> rollAndRemoveDice n s r t g
 
 applyOperator :: Char -> [Double] -> StdGen -> ErrorProne (Double, StdGen)
 applyOperator _ [] g = Left "too few operands"
-applyOperator _ (a : b : c : xs) g = Left "too many operands"
+applyOperator o [a, b, c] g
+  | o == 't' = applyDiceRemove (toIntegral a) (toIntegral b) (toIntegral c) True g
+  | o == 'b' = applyDiceRemove (toIntegral a) (toIntegral b) (toIntegral c) False g
 applyOperator o [a, b] g
   | o == '+' = aDefault (a + b) g
   | o == '-' = aDefault (a - b) g
@@ -79,6 +87,7 @@ applyOperator o [a] g
   | o == '~' = aDefault (-a) g
   | o == 'd' = applyDice (Just 1) (toIntegral a) g
   | o == '!' = (, g) <$> errorMessege (intFuncSingle' fac a) "factorial input must be a positive integer"
+applyOperator _ xs g = Left "too many operands"
 
 applyFunction :: String -> [Double] -> StdGen -> ErrorProne (Double, StdGen)
 applyFunction o [] g

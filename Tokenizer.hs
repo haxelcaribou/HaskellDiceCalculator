@@ -34,11 +34,13 @@ tokenize :: String -> ErrorProne [Token]
 tokenize "" = Right []
 tokenize l@(c : cs)
   | c `elem` operatorSymbols = (Operator c :) <$> tokenize cs
-  | c `elem` operatorLetters && (cs == "" || head cs `notElem` letters) = (Operator c :) <$> tokenize cs
+  | c `elem` operatorLetters && (null cs || head cs `notElem` letters) = (Operator c :) <$> tokenize cs
   | c == '(' = (StartParen :) <$> tokenize cs
   | c == ',' = (Comma :) <$> tokenize cs
   | c == ')' = (EndParen :) <$> tokenize cs
   | c `elem` letters = let (f, s) = pullString "" l in (Function f :) <$> tokenize s
-  | c `elem` '.' : digits = pullDouble "" l >>= (\d -> (Number (fst d) :) <$> tokenize (snd d))
+  | c `elem` '.' : digits = do
+      (d, s) <- pullDouble "" l
+      (Number d :) <$> tokenize s
   | c == ' ' = tokenize cs
   | otherwise = Left "unrecognized token"

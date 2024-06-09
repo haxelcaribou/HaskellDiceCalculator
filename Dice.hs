@@ -1,4 +1,4 @@
-module Dice (rollDice) where
+module Dice (rollDice, rollAndRemoveDice) where
 
 import Data.Bifunctor
 import Data.List (sort)
@@ -43,7 +43,8 @@ removeDice n t l
 -- return Nothing if n is negative or attempting to remove more elements than exist
 removeSortedDice :: Int -> [Int] -> ErrorProne [Int]
 removeSortedDice 0 l = Right l
-removeSortedDice _ [] = Left "cannot remove more dice than were rolled "
+removeSortedDice _ [] = Left "cannot remove more dice than were rolled"
 removeSortedDice n l
   | n < 0 = Left "cannot remove a negative number of dice"
+  | n > length l = Left "cannot remove more dice than were rolled"
   | otherwise = Right $ drop n l
