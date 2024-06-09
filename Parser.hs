@@ -98,18 +98,12 @@ parseNUD [] prec = Left "empty parser input"
 parseNUD (x : xs) prec = parselets x xs >>= uncurry (parseLED prec)
 
 parseInfix :: Char -> RemTokens -> RemTokens -> TokenTree -> Int -> ParseReturn
-parseInfix o lLess lMore tree prec =
-  errorMessege (lookup o infixOperatorPrecedence) "unknown infix operator"
-    >>= uncurry (parseInfix' o lLess lMore tree prec)
-
-parseInfix' :: Char -> RemTokens -> RemTokens -> TokenTree -> Int -> Int -> Bool -> ParseReturn
-parseInfix' o lLess lMore tree prec opPrec opAsc =
-  parseNUD lMore opPrec >>= parseInfix'' o lLess tree prec opPrec opAsc
-
-parseInfix'' :: Char -> RemTokens -> TokenTree -> Int -> Int -> Bool -> (RemTokens, Tree Token) -> ParseReturn
-parseInfix'' o lLess tree prec opPrec opAsc r
-  | opPrec < prec || (opPrec == prec && opAsc) = Right (lLess, tree)
-  | otherwise = parseLED prec (fst r) (Branch (Operator o) [tree, snd r])
+parseInfix o lLess lMore tree prec = do
+  (opPrec, opAsc) <- errorMessege (lookup o infixOperatorPrecedence) "unknown infix operator"
+  nud <- parseNUD lMore opPrec
+  if opPrec < prec || (opPrec == prec && opAsc)
+    then Right (lLess, tree)
+    else parseLED prec (fst nud) (Branch (Operator o) [tree, snd nud])
 
 parseLED :: Int -> RemTokens -> TokenTree -> ParseReturn
 parseLED prec [] tree = Right ([], tree)
