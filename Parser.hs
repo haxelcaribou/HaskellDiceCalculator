@@ -102,37 +102,44 @@ parseNUD :: RemTokens -> Int -> ParseReturn
 parseNUD [] prec = Left "empty parser input"
 parseNUD (x : xs) prec = parselets x xs >>= uncurry (parseLED prec)
 
-parseTernary :: Char -> RemTokens -> [TokenTree] -> Int -> ParseReturn
-parseTernary o r trees prec =
-  let opInfo' = lookup o ternaryOperators
-   in case opInfo' of
-        Nothing -> parseLED prec r (Branch (Operator o) trees)
-        Just (sndOps, canSolo) ->
-          if null r || head r `notElem` map Operator sndOps
-            then
-              if canSolo
-                then parseLED prec r (Branch (Operator o) trees)
-                else Left $ "unmatched ternary operator '" ++ [o] ++ "'"
-            else do
-              (rem, tree) <- parseNUD (tail r) prec
-              parseLED prec rem (Branch (head r) (trees ++ [tree]))
-
-parseInfix :: Char -> RemTokens -> RemTokens -> TokenTree -> Int -> ParseReturn
-parseInfix o lLess lMore tree prec = do
-  (opPrec, opAsc) <- errorMessege (lookup o infixOperatorPrecedence) ("unknown infix operator '" ++ [o] ++ "'")
-  (rem, tree') <- parseNUD lMore opPrec
+parseTernary :: Char -> RemTokens -> TokenTree -> Int -> ParseReturn
+parseTernary o l@(x : xs) tree1 prec = do
+  (opPrec, opAsc) <- errorMessege (lookup o infixOperatorPrecedence) ("unknown ternary operator '" ++ [o] ++ "'")
   if opPrec < prec || (opPrec == prec && opAsc)
-    then Right (lLess, tree)
-    else parseTernary o rem [tree, tree'] prec
+    then Right (l, tree1)
+    else do
+      (sndOps, canSolo) <- errorMessege (lookup o ternaryOperators) ("unknown ternary operator '" ++ [o] ++ "'")
+      (rem2, tree2) <- parseNUD xs opPrec
+      if null rem2 || head rem2 `notElem` map Operator sndOps
+        then
+          if canSolo
+            then parseLED prec rem2 (Branch x [tree1, tree2])
+            else Left $ "unmatched ternary operator '" ++ [o] ++ "'"
+        else do
+          (rem3, tree3) <- parseNUD (tail rem2) opPrec
+          parseLED prec rem3 (Branch (head rem2) [tree1, tree2, tree3])
+
+parseInfix :: Char -> RemTokens -> TokenTree -> Int -> ParseReturn
+parseInfix o l@(x : xs) t p = do
+  (opPrec, opAsc) <- errorMessege (lookup o infixOperatorPrecedence) ("unknown infix operator '" ++ [o] ++ "'")
+  if opPrec < p || (opPrec == p && opAsc)
+    then Right (l, t)
+    else do
+      (rem, tree') <- parseNUD xs opPrec
+      parseLED p rem (Branch x [t, tree'])
+
+parseOperator :: Char -> RemTokens -> TokenTree -> Int -> ParseReturn
+parseOperator o l t p
+  | o `elem` map fst ternaryOperators = parseTernary o l t p
+  | o `elem` map fst infixOperatorPrecedence = parseInfix o l t p
+  | otherwise = Right (l, t)
 
 parseLED :: Int -> RemTokens -> TokenTree -> ParseReturn
-parseLED prec [] tree = Right ([], tree)
-parseLED prec all@(x : xs) tree = case x of
-  StartParen -> parseInfix '*' all all tree prec
-  Operator c -> if c `elem` map fst infixOperatorPrecedence
-    then parseInfix c all xs tree prec
-    else Right (all, tree)
-  _ -> Right (all, tree)
+parseLED p [] t = Right ([], t)
+parseLED p l@(x : xs) t = case x of
+  StartParen -> parseInfix '*' (Operator '*' : l) t p
+  Operator c -> parseOperator c l t p
+  _ -> Right (l, t)
 
 parse :: ErrorProne [Token] -> ErrorProne TokenTree
 parse (Left e) = Left e
