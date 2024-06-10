@@ -78,7 +78,7 @@ applyOperator o [a, b] g
   | o == '*' = aDefault (a * b) g
   | o == '/' = aDefault (a / b) g
   | o == '^' = aDefault (a ** b) g
-  | o == '%' = (, g) <$> errorMessege (intFuncDouble' mod' a b) "mod input must be an integer with a nonzero dividend"
+  | o == '%' = (, g) <$> errorMessege (intFuncDouble' mod' a b) "mod input must be integers with a nonzero dividend"
   | o == 'd' = applyDice (toIntegral a) (toIntegral b) g
   | otherwise = Left "unknown operator"
 applyOperator o [a] g
@@ -120,8 +120,8 @@ applyFunction o [a, b] g
   | o == "sub" = aDefault (a - b) g
   | o == "mult" = aDefault (a * b) g
   | o == "div" = aDefault (a / b) g
-  | o == "mod" = (, g) <$> errorMessege (intFuncDouble' mod' a b) "mod input must be an integer with a nonzero dividend"
-  | o == "rem" = (, g) <$> errorMessege (intFuncDouble' rem' a b) "mod input must be an integer with a nonzero dividend"
+  | o == "mod" = (, g) <$> errorMessege (intFuncDouble' mod' a b) "mod input must be integers with a nonzero dividend"
+  | o == "rem" = (, g) <$> errorMessege (intFuncDouble' rem' a b) "mod input must be integers with a nonzero dividend"
   | o == "pow" = aDefault (a ** b) g
   | o == "log" = aDefault (logBase b a) g
 applyFunction o l@(x : xs) g

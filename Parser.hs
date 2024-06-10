@@ -147,4 +147,6 @@ parse (Right l) = do
   p <- parseNUD l 0
   if null (fst p)
     then Right $ snd p
-    else Left "invalid input"
+    else case head (fst p) of 
+      Operator c -> Left $ "unknown operator '" ++ [c] ++ "'"
+      _ -> Left "invalid input"

@@ -43,4 +43,4 @@ tokenize l@(c : cs)
       (d, s) <- pullDouble "" l
       (Number d :) <$> tokenize s
   | c == ' ' = tokenize cs
-  | otherwise = Left "unrecognized token"
+  | otherwise = Left $ "unrecognized symbol '" ++ [c] ++ "'"
