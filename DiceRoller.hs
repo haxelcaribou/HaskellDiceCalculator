@@ -9,7 +9,6 @@ import Tokenizer
 --  commas in numbers!
 --  improve error messege clarity
 --  bcd float encoding???
---  multiple parenthesis types
 --  add postfix operators (just ! I think)
 
 calc :: String -> StdGen -> ErrorProne Double

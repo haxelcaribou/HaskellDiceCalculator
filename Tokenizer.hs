@@ -35,9 +35,9 @@ tokenize "" = Right []
 tokenize l@(c : cs)
   | c `elem` operatorSymbols = (Operator c :) <$> tokenize cs
   | c `elem` operatorLetters && (null cs || head cs `notElem` letters) = (Operator c :) <$> tokenize cs
-  | c == '(' = (StartParen :) <$> tokenize cs
+  | c `elem` map fst parenSymbols = (StartParen (toParen c) :) <$> tokenize cs
   | c == ',' = (Comma :) <$> tokenize cs
-  | c == ')' = (EndParen :) <$> tokenize cs
+  | c `elem` map snd parenSymbols = (EndParen (toParen c) :) <$> tokenize cs
   | c `elem` letters = let (f, s) = pullString "" l in (Function f :) <$> tokenize s
   | c `elem` '.' : digits = do
       (d, s) <- pullDouble "" l
