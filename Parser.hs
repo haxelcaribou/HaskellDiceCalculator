@@ -101,6 +101,7 @@ parselets x xs = case x of
   Operator _ -> parseUnary x xs
   Function _ -> parseFunction x xs
   StartParen sp -> parseParens sp xs
+  EndParen _ -> Left "unmatched end parentheses or empty parenthesis" 
   _ -> Left "invalid input"
 
 parseNUD :: RemTokens -> Int -> ParseReturn
@@ -154,4 +155,5 @@ parse (Right l) = do
     then Right $ snd p
     else case head (fst p) of
       Operator c -> Left $ "unknown operator '" ++ [c] ++ "'"
+      EndParen _ -> Left "unmatched end parentheses" 
       _ -> Left "invalid input"
