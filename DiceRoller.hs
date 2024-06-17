@@ -6,7 +6,6 @@ import System.Random
 import Tokenizer
 
 -- TODO:
---  commas in numbers!
 --  improve error messege clarity
 --  bcd float encoding???
 --  add postfix operators (just ! I think)
