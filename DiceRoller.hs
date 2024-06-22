@@ -16,20 +16,27 @@ calcToString :: ErrorProne Double -> String
 calcToString (Left e) = "error: " ++ e
 calcToString (Right n) = show n
 
-answer :: StdGen -> IO ()
-answer gen = do
+getAnswer :: String -> StdGen -> String
+getAnswer gen input = calcToString $ calc gen input
+
+showAnswer :: String -> StdGen -> IO()
+showAnswer input gen = do
+      putStrLn $ getAnswer input gen
+      newGen <- newStdGen
+      inputLoop input newGen
+
+inputLoop :: String -> StdGen -> IO ()
+inputLoop pInput gen = do
   putStr "Enter Value: "
   hFlush stdout
   input <- getLine
   case input of
     "exit" -> putStrLn "exiting"
     "quit" -> putStrLn "exiting"
-    _ -> do
-      putStrLn $ calcToString $ calc input gen
-      newGen <- newStdGen
-      answer newGen
+    "" -> showAnswer pInput gen
+    _ -> showAnswer input gen
 
 main :: IO ()
 main = do
   gen <- getStdGen
-  answer gen
+  inputLoop "" gen

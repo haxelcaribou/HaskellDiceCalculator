@@ -105,7 +105,7 @@ parselets x xs = case x of
   _ -> Left "invalid input"
 
 parseNUD :: RemTokens -> Int -> ParseReturn
-parseNUD [] prec = Left "empty parser input"
+parseNUD [] prec = Left "empty input"
 parseNUD (x : xs) prec = parselets x xs >>= uncurry (parseLED prec)
 
 parseTernary :: Char -> RemTokens -> TokenTree -> Int -> ParseReturn
