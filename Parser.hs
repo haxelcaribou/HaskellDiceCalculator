@@ -134,10 +134,19 @@ parseInfix o l@(x : xs) t p = do
       (rem, tree') <- parseNUD xs opPrec
       parseLED p rem (Branch x [t, tree'])
 
+parsePostfix :: Char -> RemTokens -> TokenTree -> Int -> ParseReturn
+parsePostfix o l@(x : xs) t p = do
+  opPrec <- errorMessege (lookup o postfixOperatorPrecedence) ("unknown postfix operator '" ++ [o] ++ "'")
+  if opPrec < p
+    then Right (l, t)
+    else do
+      parseLED p xs (Branch x [t])
+
 parseOperator :: Char -> RemTokens -> TokenTree -> Int -> ParseReturn
 parseOperator o l t p
   | o `elem` map fst ternaryOperators = parseTernary o l t p
   | o `elem` map fst infixOperatorPrecedence = parseInfix o l t p
+  | o `elem` map fst postfixOperatorPrecedence = parsePostfix o l t p
   | otherwise = Right (l, t)
 
 parseLED :: Int -> RemTokens -> TokenTree -> ParseReturn

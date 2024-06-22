@@ -8,7 +8,6 @@ import Tokenizer
 -- TODO:
 --  improve error messege clarity
 --  bcd float encoding???
---  add postfix operators (just ! I think)
 
 calc :: String -> StdGen -> ErrorProne Double
 calc = evaluate . parse . tokenize

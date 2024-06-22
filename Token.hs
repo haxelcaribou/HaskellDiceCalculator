@@ -7,12 +7,12 @@ toParen c
   | c `elem` ['(', ')'] = RoundBracket
   | c `elem` ['[', ']'] = SquareBracket
   | c `elem` ['{', '}'] = CurlyBrace
-  | otherwise = error "invalid parenthesis"
+  | otherwise = error "not a parenthesis"
 
 data Token = Operator Char | Function String | Number Double | StartParen Paren | Comma | EndParen Paren deriving (Show, Eq)
 
 operatorSymbols :: [Char]
-operatorSymbols = ['~', '+', '-', '*', '/', '%', '^']
+operatorSymbols = ['~', '+', '-', '*', '/', '%', '^', '!']
 
 operatorLetters :: [Char]
 operatorLetters = ['d', 'b', 't']
