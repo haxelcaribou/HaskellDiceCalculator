@@ -86,12 +86,14 @@ applyOperator o [a] g
   | o == '-' = aDefault (-a) g
   | o == '~' = aDefault (-a) g
   | o == 'd' = applyDice (Just 1) (toIntegral a) g
+  | o == '%' = applyDice (toIntegral a) (Just 100) g
   | o == '!' = (, g) <$> errorMessege (intFuncSingle' fac a) "factorial input must be a positive integer"
 applyOperator _ xs g = Left "too many operands"
 
 applyFunction :: String -> [Double] -> StdGen -> ErrorProne (Double, StdGen)
 applyFunction o [] g
   | o == "pi" = aDefault pi g
+  | o == "tau" = aDefault (pi*2) g
   | o == "e" = aDefault (exp 1) g
   | otherwise = Left "unknown constant"
 applyFunction o [x] g
@@ -102,6 +104,7 @@ applyFunction o [x] g
   | o == "trunc" = aDefault (fromIntegral $ truncate x) g
   | o == "floor" = aDefault (fromIntegral $ floor x) g
   | o == "ceil" = aDefault (fromIntegral $ ceiling x) g
+  | o == "inv" = aDefault (x ** (-1)) g
   | o == "exp" = aDefault (exp x) g
   | o == "sqrt" = aDefault (sqrt x) g
   | o == "ln" = aDefault (log x) g

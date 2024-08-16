@@ -10,6 +10,8 @@ import Tokenizer
 -- TODO:
 --  improve error messege clarity
 --  bcd float encoding???
+--  pecentge dice (d%)
+--  repeated rolls ([n]x[roll])
 
 calc :: String -> StdGen -> ErrorProne Double
 calc = evaluate . parse . tokenize

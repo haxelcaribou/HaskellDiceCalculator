@@ -4,7 +4,7 @@ import Error
 import Token
 
 letters :: [Char]
-letters = ['a' .. 'z'] ++ ['A' .. 'Z']
+letters = ['a' .. 'z']
 
 digits :: [Char]
 digits = ['0' .. '9']
