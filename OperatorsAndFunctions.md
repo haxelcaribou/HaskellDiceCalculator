@@ -13,7 +13,7 @@ Supported operators are `~`, `+`, `-`, `*`, `/`, `%`, `^`, and `!`
 
 ## Functions
 
-Multiple functions are supported. All trigonametric functions operate using radians.
+Multiple functions are supported. All trigonametric functions operate using radians.  
 Functions take the form *function*(*argument 1*, *argument 2*, …, *argument n*)
 
 Single Argument Functions:
