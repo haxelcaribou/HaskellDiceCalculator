@@ -57,4 +57,4 @@ Multiple Argument Functions: (takes any number of argments)
 
 ## Constants
 
-Supported constants are pi, tau (2π), and e (euler's number)
+Supported constants are `pi`, `tau` (2π), and `e` (euler's number)
