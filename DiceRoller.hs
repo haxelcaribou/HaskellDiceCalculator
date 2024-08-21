@@ -2,6 +2,7 @@ import Data.Char (toLower)
 import Error
 import Evaluator
 import Parser
+import System.Console.ANSI
 import System.Console.Haskeline
 import System.IO (hFlush, stdout)
 import System.Random
@@ -18,19 +19,22 @@ calc = evaluate . parse . tokenize
 
 calcToString :: ErrorProne Double -> String
 calcToString (Left e) = "error: " ++ e
-calcToString (Right n) = show n
+calcToString (Right n) = styleText [SetConsoleIntensity BoldIntensity] $ show n
 
 getAnswer :: String -> StdGen -> String
 getAnswer gen input = calcToString $ calc gen input
 
-main :: IO ()
-main = do
+styleText :: [SGR] -> String -> String
+styleText style text = setSGRCode style ++ text ++ setSGRCode [Reset]
+
+interactive :: IO ()
+interactive = do
   gen <- getStdGen
   runInputT (setComplete noCompletion defaultSettings) (loop gen)
   where
     loop :: StdGen -> InputT IO ()
     loop gen = do
-      minput <- getInputLine "Enter Value: "
+      minput <- getInputLine $ styleText [SetColor Foreground Vivid Blue] "Enter Value: "
       case minput of
         Nothing -> return ()
         Just input -> takeInput gen $ map toLower input
@@ -60,3 +64,6 @@ main = do
         outputStrLn $ getAnswer input gen
         newGen <- newStdGen
         loop newGen
+
+main :: IO ()
+main = interactive
