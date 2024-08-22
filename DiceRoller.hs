@@ -102,33 +102,30 @@ options =
           <> short 'c'
           <> help "Clear screen before and after running"
       )
-    <*> option (return <$> str)
-      (
-        long "eval"
+    <*> option
+      (return <$> str)
+      ( long "eval"
           <> short 'e'
           <> metavar "EXPRESSION"
           <> value Nothing
           <> help "Evaluate a specific expression, skipping the interactive prompt"
       )
 
+clearWrapper :: IO () -> IO ()
+clearWrapper f = do
+  clearScreen
+  setCursorPosition 0 0
+  f
+  clearScreen
+  setCursorPosition 0 0
+
 parseArgs :: Options -> IO ()
-parseArgs (Options color bold True Nothing) = do
-  clearScreen
-  setCursorPosition 0 0
-  parseArgs (Options color bold False Nothing)
-  clearScreen
-  setCursorPosition 0 0
-parseArgs o@(Options color bold False Nothing) = interactive o
-parseArgs (Options color bold True (Just input)) = do
-  clearScreen
-  setCursorPosition 0 0
-  parseArgs (Options color bold False (Just input))
-  clearScreen
-  setCursorPosition 0 0
-parseArgs o@(Options color bold False (Just input)) = do
+parseArgs o@(Options _ _ True Nothing) =
+  clearWrapper $ parseArgs o {clear = False}
+parseArgs o@(Options _ _ False Nothing) = interactive o
+parseArgs o@(Options _ _ _ (Just input)) = do
   gen <- getStdGen
   putStrLn $ getAnswer o (map toLower input) gen
-
 
 main :: IO ()
 main = parseArgs =<< execParser opts
