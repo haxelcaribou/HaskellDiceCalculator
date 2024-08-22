@@ -18,7 +18,8 @@ import Tokenizer
 data Options = Options
   { color :: Bool,
     bold :: Bool,
-    clear :: Bool
+    clear :: Bool,
+    eval :: Maybe String
   }
 
 applyIfTrue :: (a -> a) -> Bool -> a -> a
@@ -46,7 +47,14 @@ calcToString o (Left e) =
 calcToString o (Right n) = boldText o $ show n
 
 getAnswer :: Options -> String -> StdGen -> String
-getAnswer o gen input = calcToString o $ calc gen input
+getAnswer o input gen = calcToString o $ calc (shortcuts input) gen
+
+shortcuts :: String -> String
+shortcuts "t" = "1d20"
+shortcuts "a" = "2d20b1"
+shortcuts "d" = "2d20t1"
+shortcuts "s" = "4d6b1"
+shortcuts input = input
 
 styleText :: [SGR] -> String -> String
 styleText style text = setSGRCode style ++ text ++ setSGRCode [Reset]
@@ -69,23 +77,7 @@ interactive o = do
       "" -> loop o gen
       "exit" -> return ()
       "quit" -> return ()
-      "t" -> do
-        outputStrLn $ getAnswer o "1d20" gen
-        newGen <- newStdGen
-        loop o newGen
-      "a" -> do
-        outputStrLn $ getAnswer o "2d20b1" gen
-        newGen <- newStdGen
-        loop o newGen
-      "d" -> do
-        outputStrLn $ getAnswer o "2d20t1" gen
-        newGen <- newStdGen
-        loop o newGen
-      "s" -> do
-        outputStrLn $ getAnswer o "4d6b1" gen
-        newGen <- newStdGen
-        loop o newGen
-      input -> do
+      _ -> do
         outputStrLn $ getAnswer o input gen
         newGen <- newStdGen
         loop o newGen
@@ -93,7 +85,9 @@ interactive o = do
 options :: Parser Options
 options =
   Options
-    <$> flag True False
+    <$> flag
+      True
+      False
       ( long "no-color"
           <> short 'n'
           <> help "Don't color output"
@@ -108,22 +102,40 @@ options =
           <> short 'c'
           <> help "Clear screen before and after running"
       )
+    <*> option (return <$> str)
+      (
+        long "eval"
+          <> short 'e'
+          <> metavar "EXPRESSION"
+          <> value Nothing
+          <> help "Evaluate a specific expression, skipping the interactive prompt"
+      )
 
 parseArgs :: Options -> IO ()
-parseArgs (Options color bold True) = do
+parseArgs (Options color bold True Nothing) = do
   clearScreen
   setCursorPosition 0 0
-  parseArgs (Options color bold False)
+  parseArgs (Options color bold False Nothing)
   clearScreen
   setCursorPosition 0 0
-parseArgs options@(Options color bold False) = interactive options
+parseArgs o@(Options color bold False Nothing) = interactive o
+parseArgs (Options color bold True (Just input)) = do
+  clearScreen
+  setCursorPosition 0 0
+  parseArgs (Options color bold False (Just input))
+  clearScreen
+  setCursorPosition 0 0
+parseArgs o@(Options color bold False (Just input)) = do
+  gen <- getStdGen
+  putStrLn $ getAnswer o (map toLower input) gen
+
 
 main :: IO ()
 main = parseArgs =<< execParser opts
   where
     opts =
       info
-        (options <**> helper)
+        (helper <*> options)
         ( fullDesc
             <> progDesc "Roll dice and do math"
         )
