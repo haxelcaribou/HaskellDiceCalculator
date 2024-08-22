@@ -16,7 +16,7 @@ import Tokenizer
 --  repeated rolls ([n]x[roll])
 
 data Options = Options
-  { noColor :: Bool,
+  { color :: Bool,
     bold :: Bool,
     clear :: Bool
   }
@@ -35,7 +35,7 @@ colorText :: Options -> ColorIntensity -> Color -> String -> String
 colorText o i c =
   applyIfTrue
     (styleText [SetColor Foreground i c])
-    (not $ noColor o)
+    (color o)
 
 calc :: String -> StdGen -> ErrorProne Double
 calc = evaluate . parse . tokenize
@@ -93,7 +93,7 @@ interactive o = do
 options :: Parser Options
 options =
   Options
-    <$> switch
+    <$> flag True False
       ( long "no-color"
           <> short 'n'
           <> help "Don't color output"
@@ -110,13 +110,13 @@ options =
       )
 
 parseArgs :: Options -> IO ()
-parseArgs (Options noColor bold True) = do
+parseArgs (Options color bold True) = do
   clearScreen
   setCursorPosition 0 0
-  parseArgs (Options noColor bold False)
+  parseArgs (Options color bold False)
   clearScreen
   setCursorPosition 0 0
-parseArgs options@(Options noColor bold False) = interactive options
+parseArgs options@(Options color bold False) = interactive options
 
 main :: IO ()
 main = parseArgs =<< execParser opts
