@@ -13,24 +13,23 @@ sequenceFst (Right a, b) = Right (a, b)
 -- return list of n number of s sided dice and new StdGen
 -- return an Error if rolling negative number of dice
 --  or rolling dice with a non-positive number of sides
-getDiceRoll :: Int -> Int -> StdGen -> ErrorProne ([Int], StdGen)
+getDiceRoll :: Int -> Int -> StdGen -> (ErrorProne [Int], StdGen)
 getDiceRoll n s g
-  | n < 0 = Left "cannot roll a negative number of dice"
-  | s <= 0 = Left "dice must have a positive number of sides"
-  | n == 0 || s == 0 = Right ([], g)
+  | n < 0 = (Left "cannot roll a negative number of dice", g)
+  | s <= 0 = (Left "dice must have a positive number of sides", g)
+  | n == 0 || s == 0 = (Right [], g)
   | otherwise =
       let r = randomR (1, s) g
-       in first (fst r :) <$> getDiceRoll (n - 1) s (snd r)
+       in first ((fst r :) <$>) $ getDiceRoll (n - 1) s (snd r)
 
 -- roll n number of s sided dice
-rollDice :: Int -> Int -> StdGen -> ErrorProne (Int, StdGen)
-rollDice n s g = first sum <$> getDiceRoll n s g
+rollDice :: Int -> Int -> StdGen -> (ErrorProne Int, StdGen)
+rollDice n s g = first (fmap sum) $ getDiceRoll n s g
 
 -- roll n number of s sided dice dice, removing either highest or lowest r elements
-rollAndRemoveDice :: Int -> Int -> Int -> Bool -> StdGen -> ErrorProne (Int, StdGen)
+rollAndRemoveDice :: Int -> Int -> Int -> Bool -> StdGen -> (ErrorProne Int, StdGen)
 rollAndRemoveDice n s r t g =
-  first sum
-    <$> (getDiceRoll n s g >>= (sequenceFst . first (removeDice r t)))
+  first (fmap sum . (>>= removeDice r t)) (getDiceRoll n s g)
 
 -- remove highest n elements from list if t is true
 -- otherwise remove lowest n elements
@@ -53,7 +52,7 @@ removeSortedDice n l
 
 prop_getDiceRollError (n, s, gi) =
   (n < 0 || s <= 0)
-    == case getDiceRoll n s (mkStdGen gi) of Left _ -> True; _ -> False
+    == case fst $ getDiceRoll n s (mkStdGen gi) of Left _ -> True; _ -> False
 
 prop_removeSortedDiceError (n, l) =
   (n < 0 || n > length l)
@@ -61,4 +60,4 @@ prop_removeSortedDiceError (n, l) =
 
 prop_rollAndRemoveDiceError (n, s, r, t, gi) =
   (n < 0 || s <= 0 || r < 0 || r > n)
-    == case rollAndRemoveDice n s r t (mkStdGen gi) of Left _ -> True; _ -> False
+    == case fst $ rollAndRemoveDice n s r t (mkStdGen gi) of Left _ -> True; _ -> False

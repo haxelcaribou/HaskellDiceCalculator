@@ -1,3 +1,4 @@
+import Data.Bifunctor (first, second)
 import Data.Char (toLower)
 import Error
 import Evaluator
@@ -7,6 +8,7 @@ import System.Console.ANSI
 import System.Console.Haskeline
 import System.IO (hFlush, stdout)
 import System.Random
+import Text.Read (readMaybe)
 import Tokenizer
 
 -- TODO:
@@ -19,6 +21,7 @@ data Options = Options
   { color :: Bool,
     bold :: Bool,
     clear :: Bool,
+    gen :: Maybe Int,
     eval :: Maybe String
   }
 
@@ -38,7 +41,7 @@ colorText o i c =
     (styleText [SetColor Foreground i c])
     (color o)
 
-calc :: String -> StdGen -> ErrorProne Double
+calc :: String -> StdGen -> (ErrorProne Double, StdGen)
 calc = evaluate . parse . tokenize
 
 calcToString :: Options -> ErrorProne Double -> String
@@ -46,8 +49,8 @@ calcToString o (Left e) =
   colorText o Dull Red (boldText o "error: ") ++ e
 calcToString o (Right n) = boldText o $ show n
 
-getAnswer :: Options -> String -> StdGen -> String
-getAnswer o input gen = calcToString o $ calc (shortcuts input) gen
+getAnswer :: Options -> String -> StdGen -> (String, StdGen)
+getAnswer o input gen = first (calcToString o) (calc (shortcuts input) gen)
 
 shortcuts :: String -> String
 shortcuts "t" = "1d20"
@@ -61,7 +64,7 @@ styleText style text = setSGRCode style ++ text ++ setSGRCode [Reset]
 
 interactive :: Options -> IO ()
 interactive o = do
-  gen <- getStdGen
+  gen <- getGen o
   runInputT (setComplete noCompletion defaultSettings) (loop o gen)
   where
     loop :: Options -> StdGen -> InputT IO ()
@@ -77,10 +80,11 @@ interactive o = do
       "" -> loop o gen
       "exit" -> return ()
       "quit" -> return ()
-      _ -> do
-        outputStrLn $ getAnswer o input gen
-        newGen <- newStdGen
-        loop o newGen
+      _ ->
+        let ans = getAnswer o input gen
+         in do
+              outputStrLn $ fst ans
+              loop o (snd ans)
 
 options :: Parser Options
 options =
@@ -103,6 +107,14 @@ options =
           <> help "Clear screen before and after running"
       )
     <*> option
+      (return <$> maybeReader readMaybe)
+      ( long "rand"
+          <> short 'r'
+          <> metavar "INT"
+          <> value Nothing
+          <> help "Use a specific pseudorandom number generator for deterministic results"
+      )
+    <*> option
       (return <$> str)
       ( long "eval"
           <> short 'e'
@@ -119,13 +131,21 @@ clearWrapper f = do
   clearScreen
   setCursorPosition 0 0
 
+getGen :: Options -> IO StdGen
+getGen o = case gen o of
+  Nothing -> newStdGen
+  Just i -> pure $ mkStdGen i
+
 parseArgs :: Options -> IO ()
-parseArgs o@(Options _ _ True Nothing) =
-  clearWrapper $ parseArgs o {clear = False}
-parseArgs o@(Options _ _ False Nothing) = interactive o
-parseArgs o@(Options _ _ _ (Just input)) = do
-  gen <- getStdGen
-  putStrLn $ getAnswer o (map toLower input) gen
+parseArgs o
+  | clear o = case eval o of
+      Nothing -> clearWrapper $ parseArgs o {clear = False}
+      Just _ -> parseArgs o {clear = False}
+  | otherwise = case eval o of
+      Nothing -> interactive o
+      Just input -> do
+        gen <- getGen o
+        putStrLn $ fst $ getAnswer o (map toLower input) gen
 
 main :: IO ()
 main = parseArgs =<< execParser opts
