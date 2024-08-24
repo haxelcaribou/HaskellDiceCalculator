@@ -41,8 +41,8 @@ colorText o i c =
     (styleText [SetColor Foreground i c])
     (color o)
 
-calc :: String -> StdGen -> (ErrorProne Double, StdGen)
-calc = evaluate . parse . tokenize
+calculate :: String -> StdGen -> (ErrorProne Double, StdGen)
+calculate = evaluate . parse . tokenize
 
 calcToString :: Options -> ErrorProne Double -> String
 calcToString o (Left e) =
@@ -50,7 +50,7 @@ calcToString o (Left e) =
 calcToString o (Right n) = boldText o $ show n
 
 getAnswer :: Options -> String -> StdGen -> (String, StdGen)
-getAnswer o input gen = first (calcToString o) (calc (shortcuts input) gen)
+getAnswer o input gen = first (calcToString o) (calculate (shortcuts input) gen)
 
 shortcuts :: String -> String
 shortcuts "t" = "1d20"
