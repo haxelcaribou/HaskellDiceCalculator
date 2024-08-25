@@ -1,0 +1,40 @@
+cabal-version:      2.4
+name:               DiceCalculator
+version:            0.1.0.0
+synopsis:           A calculator that allows dice notation, written in haskell
+
+-- A longer description of the package.
+-- description:
+homepage:           https://github.com/haxelcaribou/HaskellDiceCalculator
+
+-- A URL where users can report bugs.
+-- bug-reports:
+license:            GPL-3.0-or-later
+license-file:       LICENSE
+author:             Haxel Caribou
+maintainer:         haxelcaribou@proton.me
+
+-- A copyright notice.
+-- copyright:
+-- category:
+extra-source-files:
+    CHANGELOG.md
+    README.md
+
+executable DiceCalculator
+    main-is:          DiceRoller.hs
+
+    -- Modules included in this executable, other than Main.
+    other-modules:    Dice, Error, Evaluator, Parser, Token, Tokenizer, Tree
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+    build-depends:
+        base ^>= 4.16.4.0,
+        ansi-terminal >= 0.11.4 && < 1.2,
+        haskeline >= 0.8.2 && < 0.9,
+        optparse-applicative >= 0.17.1 && < 0.19,
+        QuickCheck >= 2.14.3 && < 2.16,
+        random >= 1.2.1 && < 1.3,
+    hs-source-dirs:   app
+    default-language: Haskell2010

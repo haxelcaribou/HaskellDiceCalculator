@@ -6,6 +6,7 @@ A calculator that allows dice notation, written in haskell
 
 Dice rolls are in the standard format:  
 [number of dice]d[number of sides on each die]
+if no number of dice is given it is assumed to be 1 (eg. d20 -> 1d20)
 
 in addition, the highest or lowest dice can be removed by adding 't' (top) or 'b' (bottom) to the end, respectively, along with the amount to be removed:  
 #d#t[remove highest n values]  
