@@ -54,105 +54,105 @@ fac x
   | otherwise = (x *) <$> fac (x - 1)
 
 aDefault :: Double -> StdGen -> (ErrorProne Double, StdGen)
-aDefault x g = (Right x, g)
+aDefault x = (Right x,)
 
 aError :: String -> StdGen -> (ErrorProne Double, StdGen)
-aError s g = (Left s, g)
+aError s = (Left s,)
 
 applyDice :: Maybe Int -> Maybe Int -> StdGen -> (ErrorProne Double, StdGen)
-applyDice Nothing _ g = aError "dice input must be an integer" g
-applyDice _ Nothing g = aError "dice input must be an integer" g
-applyDice (Just n) (Just s) g = first (fmap fromIntegral) $ rollDice n s g
+applyDice Nothing _ = aError "dice input must be an integer"
+applyDice _ Nothing = aError "dice input must be an integer"
+applyDice (Just n) (Just s) = first (fmap fromIntegral) . rollDice n s
 
 applyDiceRemove :: Maybe Int -> Maybe Int -> Maybe Int -> Bool -> StdGen -> (ErrorProne Double, StdGen)
-applyDiceRemove Nothing _ _ _ g = aError "dice input must be an integer" g
-applyDiceRemove _ Nothing _ _ g = aError "dice input must be an integer" g
-applyDiceRemove _ _ Nothing _ g = aError "dice input must be an integer" g
-applyDiceRemove (Just n) (Just s) (Just r) t g = first (fmap fromIntegral) $ rollAndRemoveDice n s r t g
+applyDiceRemove Nothing _ _ _ = aError "dice input must be an integer"
+applyDiceRemove _ Nothing _ _ = aError "dice input must be an integer"
+applyDiceRemove _ _ Nothing _ = aError "dice input must be an integer"
+applyDiceRemove (Just n) (Just s) (Just r) t = first (fmap fromIntegral) . rollAndRemoveDice n s r t
 
 applyOperator :: Char -> [Double] -> StdGen -> (ErrorProne Double, StdGen)
-applyOperator _ [] g = aError "too few operands" g
-applyOperator o [a, b, c] g
-  | o == 't' = applyDiceRemove (toIntegral a) (toIntegral b) (toIntegral c) True g
-  | o == 'b' = applyDiceRemove (toIntegral a) (toIntegral b) (toIntegral c) False g
-applyOperator o [a, b] g
-  | o == '+' = aDefault (a + b) g
-  | o == '-' = aDefault (a - b) g
-  | o == '*' = aDefault (a * b) g
-  | o == '/' = aDefault (a / b) g
-  | o == '^' = aDefault (a ** b) g
-  | o == '%' = (,g) $ errorMessege (intFuncDouble' mod' a b) "mod input must be integers with a nonzero dividend"
-  | o == 'd' = applyDice (toIntegral a) (toIntegral b) g
-  | otherwise = aError "unknown operator" g
-applyOperator o [a] g
-  | o == '+' = aDefault a g
-  | o == '-' = aDefault (-a) g
-  | o == '~' = aDefault (-a) g
-  | o == 'd' = applyDice (Just 1) (toIntegral a) g
-  | o == '%' = applyDice (toIntegral a) (Just 100) g
-  | o == '!' = (,g) $ errorMessege (intFuncSingle' fac a) "factorial input must be a positive integer"
-applyOperator _ xs g = aError "too many operands" g
+applyOperator _ [] = aError "too few operands"
+applyOperator o [a, b, c]
+  | o == 't' = applyDiceRemove (toIntegral a) (toIntegral b) (toIntegral c) True
+  | o == 'b' = applyDiceRemove (toIntegral a) (toIntegral b) (toIntegral c) False
+applyOperator o [a, b]
+  | o == '+' = aDefault (a + b)
+  | o == '-' = aDefault (a - b)
+  | o == '*' = aDefault (a * b)
+  | o == '/' = aDefault (a / b)
+  | o == '^' = aDefault (a ** b)
+  | o == '%' = (errorMessege (intFuncDouble' mod' a b) "mod input must be integers with a nonzero dividend",)
+  | o == 'd' = applyDice (toIntegral a) (toIntegral b)
+  | otherwise = aError "unknown operator"
+applyOperator o [a]
+  | o == '+' = aDefault a
+  | o == '-' = aDefault (-a)
+  | o == '~' = aDefault (-a)
+  | o == 'd' = applyDice (Just 1) (toIntegral a)
+  | o == '%' = applyDice (toIntegral a) (Just 100)
+  | o == '!' = (errorMessege (intFuncSingle' fac a) "factorial input must be a positive integer",)
+applyOperator _ xs = aError "too many operands"
 
 applyFunction :: String -> [Double] -> StdGen -> (ErrorProne Double, StdGen)
-applyFunction o [] g
-  | o == "pi" = aDefault pi g
-  | o == "tau" = aDefault (pi * 2) g
-  | o == "e" = aDefault (exp 1) g
-  | otherwise = aError "unknown constant" g
-applyFunction o [x] g
-  | o == "negate" = aDefault (negate x) g
-  | o == "abs" = aDefault (abs x) g
-  | o == "sign" = aDefault (signum x) g
-  | o == "round" = aDefault (fromIntegral $ round x) g
-  | o == "trunc" = aDefault (fromIntegral $ truncate x) g
-  | o == "floor" = aDefault (fromIntegral $ floor x) g
-  | o == "ceil" = aDefault (fromIntegral $ ceiling x) g
-  | o == "inv" = aDefault (x ** (-1)) g
-  | o == "exp" = aDefault (exp x) g
-  | o == "sqrt" = aDefault (sqrt x) g
-  | o == "ln" = aDefault (log x) g
-  | o == "log" = aDefault (logBase 10 x) g
-  | o == "fac" = (,g) $ errorMessege (intFuncSingle' fac x) "factorial input must be a positive integer"
-  | o == "sin" = aDefault (sin x) g
-  | o == "tan" = aDefault (tan x) g
-  | o == "cos" = aDefault (cos x) g
-  | o == "asin" = aDefault (asin x) g
-  | o == "atan" = aDefault (atan x) g
-  | o == "acos" = aDefault (acos x) g
-  | o == "rad" = aDefault (x / 180 * pi) g
-  | o == "deg" = aDefault (x / pi * 180) g
-applyFunction o [a, b] g
-  | o == "add" = aDefault (a + b) g
-  | o == "sub" = aDefault (a - b) g
-  | o == "mult" = aDefault (a * b) g
-  | o == "div" = aDefault (a / b) g
-  | o == "mod" = (,g) $ errorMessege (intFuncDouble' mod' a b) "mod input must be integers with a nonzero dividend"
-  | o == "rem" = (,g) $ errorMessege (intFuncDouble' rem' a b) "mod input must be integers with a nonzero dividend"
-  | o == "pow" = aDefault (a ** b) g
-  | o == "log" = aDefault (logBase b a) g
-applyFunction o l@(x : xs) g
-  | o == "sum" = aDefault (sum l) g
-  | o == "prod" = aDefault (product l) g
-  | o == "min" = aDefault (minimum l) g
-  | o == "max" = aDefault (maximum l) g
-  | otherwise = aError "unknown function" g
+applyFunction o []
+  | o == "pi" = aDefault pi
+  | o == "tau" = aDefault (pi * 2)
+  | o == "e" = aDefault (exp 1)
+  | otherwise = aError "unknown constant"
+applyFunction o [x]
+  | o == "negate" = aDefault (negate x)
+  | o == "abs" = aDefault (abs x)
+  | o == "sign" = aDefault (signum x)
+  | o == "round" = aDefault (fromIntegral $ round x)
+  | o == "trunc" = aDefault (fromIntegral $ truncate x)
+  | o == "floor" = aDefault (fromIntegral $ floor x)
+  | o == "ceil" = aDefault (fromIntegral $ ceiling x)
+  | o == "inv" = aDefault (x ** (-1))
+  | o == "exp" = aDefault (exp x)
+  | o == "sqrt" = aDefault (sqrt x)
+  | o == "ln" = aDefault (log x)
+  | o == "log" = aDefault (logBase 10 x)
+  | o == "fac" = (errorMessege (intFuncSingle' fac x) "factorial input must be a positive integer",)
+  | o == "sin" = aDefault (sin x)
+  | o == "tan" = aDefault (tan x)
+  | o == "cos" = aDefault (cos x)
+  | o == "asin" = aDefault (asin x)
+  | o == "atan" = aDefault (atan x)
+  | o == "acos" = aDefault (acos x)
+  | o == "rad" = aDefault (x / 180 * pi)
+  | o == "deg" = aDefault (x / pi * 180)
+applyFunction o [a, b]
+  | o == "add" = aDefault (a + b)
+  | o == "sub" = aDefault (a - b)
+  | o == "mult" = aDefault (a * b)
+  | o == "div" = aDefault (a / b)
+  | o == "mod" = (errorMessege (intFuncDouble' mod' a b) "mod input must be integers with a nonzero dividend",)
+  | o == "rem" = (errorMessege (intFuncDouble' rem' a b) "mod input must be integers with a nonzero dividend",)
+  | o == "pow" = aDefault (a ** b)
+  | o == "log" = aDefault (logBase b a)
+applyFunction o l@(x : xs)
+  | o == "sum" = aDefault (sum l)
+  | o == "prod" = aDefault (product l)
+  | o == "min" = aDefault (minimum l)
+  | o == "max" = aDefault (maximum l)
+  | otherwise = aError "unknown function"
 
 -- evaluate :: ErrorProne (Tree Token) -> StdGen -> ErrorProne Double
 -- evaluate t g = fst <$> evaluate' t g
 
 evaluate :: ErrorProne (Tree Token) -> StdGen -> (ErrorProne Double, StdGen)
-evaluate (Left e) g = (Left e, g)
-evaluate (Right (Leaf x)) g = case x of
-  Number n -> (Right n, g)
-  _ -> aError "bad input" g
-evaluate (Right (Branch x l)) g = case x of
-  Operator c -> applyList (applyOperator c) (evaluateList l g)
-  Function s -> applyList (applyFunction s) (evaluateList l g)
-  _ -> aError "bad input" g
+evaluate (Left e) = (Left e,)
+evaluate (Right (Leaf x)) = case x of
+  Number n -> (Right n,)
+  _ -> aError "bad input"
+evaluate (Right (Branch x l)) = case x of
+  Operator c -> uncurry (applyList (applyOperator c)) . evaluateList l
+  Function s -> uncurry (applyList (applyFunction s)) . evaluateList l
+  _ -> aError "bad input"
   where
-    applyList :: ([Double] -> StdGen -> (ErrorProne Double, StdGen)) -> (ErrorProne [Double], StdGen) -> (ErrorProne Double, StdGen)
-    applyList f (Left e, g) = (Left e, g)
-    applyList f (Right xs, g) = f xs g
+    applyList :: ([Double] -> StdGen -> (ErrorProne Double, StdGen)) -> ErrorProne [Double] -> StdGen -> (ErrorProne Double, StdGen)
+    applyList f (Left e) = (Left e,)
+    applyList f (Right xs) = f xs
 
 evaluateList :: [Tree Token] -> StdGen -> (ErrorProne [Double], StdGen)
 evaluateList [] g = (Right [], g)
