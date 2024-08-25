@@ -12,10 +12,6 @@ import System.Random
 import Token
 import Tree
 
-sequenceFst :: (ErrorProne a, b) -> ErrorProne (a, b)
-sequenceFst (Left e, _) = Left e
-sequenceFst (Right a, b) = Right (a, b)
-
 errorMessege :: Maybe a -> String -> ErrorProne a
 errorMessege m s = maybe (Left s) Right m
 

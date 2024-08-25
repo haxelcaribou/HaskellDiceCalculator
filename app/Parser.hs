@@ -15,10 +15,6 @@ sequenceFst :: (ErrorProne a, b) -> ErrorProne (a, b)
 sequenceFst (Left e, _) = Left e
 sequenceFst (Right a, b) = Right (a, b)
 
-sequenceSnd :: (a, ErrorProne b) -> ErrorProne (a, b)
-sequenceSnd (_, Left e) = Left e
-sequenceSnd (a, Right b) = Right (a, b)
-
 errorMessege :: Maybe a -> String -> ErrorProne a
 errorMessege m s = maybe (Left s) Right m
 
@@ -101,7 +97,7 @@ parselets x xs = case x of
   Operator _ -> parseUnary x xs
   Function _ -> parseFunction x xs
   StartParen sp -> parseParens sp xs
-  EndParen _ -> Left "unmatched end parentheses or empty parenthesis" 
+  EndParen _ -> Left "unmatched end parentheses or empty parenthesis"
   _ -> Left "invalid input"
 
 parseNUD :: RemTokens -> Int -> ParseReturn
@@ -164,5 +160,5 @@ parse (Right l) = do
     then Right $ snd p
     else case head (fst p) of
       Operator c -> Left $ "unknown operator '" ++ [c] ++ "'"
-      EndParen _ -> Left "unmatched end parentheses" 
+      EndParen _ -> Left "unmatched end parentheses"
       _ -> Left "invalid input"
