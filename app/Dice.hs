@@ -20,16 +20,15 @@ getDiceRoll n s g
   | n == 0 || s == 0 = (Right [], g)
   | otherwise =
       let r = randomR (1, s) g
-       in first ((fst r :) <$>) $ getDiceRoll (n - 1) s (snd r)
+       in first (fmap (fst r :)) $ getDiceRoll (n - 1) s (snd r)
 
 -- roll n number of s sided dice
 rollDice :: Int -> Int -> StdGen -> (ErrorProne Int, StdGen)
-rollDice n s g = first (fmap sum) $ getDiceRoll n s g
+rollDice n s = first (fmap sum) . getDiceRoll n s
 
 -- roll n number of s sided dice dice, removing either highest or lowest r elements
 rollAndRemoveDice :: Int -> Int -> Int -> Bool -> StdGen -> (ErrorProne Int, StdGen)
-rollAndRemoveDice n s r t g =
-  first (fmap sum . (>>= removeDice r t)) (getDiceRoll n s g)
+rollAndRemoveDice n s r t = first (fmap sum . (>>= removeDice r t)) . getDiceRoll n s
 
 -- remove highest n elements from list if t is true
 -- otherwise remove lowest n elements

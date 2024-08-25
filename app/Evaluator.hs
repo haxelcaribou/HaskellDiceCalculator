@@ -28,7 +28,7 @@ mergeMaybe (Just Nothing) = Nothing
 mergeMaybe (Just (Just x)) = Just x
 
 intFuncSingle :: (Integral a) => (a -> a) -> (Double -> Maybe Double)
-intFuncSingle f x = fromIntegral . f <$> toIntegral x
+intFuncSingle f = fmap (fromIntegral . f) . toIntegral
 
 intFuncSingle' :: (Integral a) => (a -> Maybe a) -> (Double -> Maybe Double)
 intFuncSingle' f x = fromIntegral <$> (toIntegral x >>= f)
