@@ -1,5 +1,2 @@
 *.code-workspace
 dist-newstyle/
-Output/
-DiceRoller
-compile.sh
