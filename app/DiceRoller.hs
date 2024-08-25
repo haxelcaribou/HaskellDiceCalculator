@@ -18,11 +18,11 @@ import Tokenizer
 --  repeated rolls ([n]x[roll])
 
 data Options = Options
-  { color :: Bool,
-    bold :: Bool,
-    clear :: Bool,
-    gen :: Maybe Int,
-    eval :: Maybe String
+  { optColor :: Bool,
+    optBold :: Bool,
+    optClear :: Bool,
+    optGen :: Maybe Int,
+    optEval :: Maybe String
   }
 
 applyIfTrue :: (a -> a) -> Bool -> a -> a
@@ -33,13 +33,13 @@ boldText :: Options -> String -> String
 boldText o =
   applyIfTrue
     (styleText [SetConsoleIntensity BoldIntensity])
-    (bold o)
+    (optBold o)
 
 colorText :: Options -> ColorIntensity -> Color -> String -> String
 colorText o i c =
   applyIfTrue
     (styleText [SetColor Foreground i c])
-    (color o)
+    (optColor o)
 
 calculate :: String -> StdGen -> (ErrorProne Double, StdGen)
 calculate = evaluate . parse . tokenize
@@ -132,16 +132,16 @@ clearWrapper f = do
   setCursorPosition 0 0
 
 getGen :: Options -> IO StdGen
-getGen o = case gen o of
+getGen o = case optGen o of
   Nothing -> newStdGen
   Just i -> pure $ mkStdGen i
 
 parseArgs :: Options -> IO ()
 parseArgs o
-  | clear o = case eval o of
-      Nothing -> clearWrapper $ parseArgs o {clear = False}
-      Just _ -> parseArgs o {clear = False}
-  | otherwise = case eval o of
+  | optClear o = case optEval o of
+      Nothing -> clearWrapper $ parseArgs o {optClear = False}
+      Just _ -> parseArgs o {optClear = False}
+  | otherwise = case optEval o of
       Nothing -> interactive o
       Just input -> do
         gen <- getGen o
