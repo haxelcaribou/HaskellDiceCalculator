@@ -60,15 +60,15 @@ aError :: String -> StdGen -> (ErrorProne Double, StdGen)
 aError s g = (Left s, g)
 
 applyDice :: Maybe Int -> Maybe Int -> StdGen -> (ErrorProne Double, StdGen)
-applyDice Nothing _ g = aError "dice input must be an integer" g
-applyDice _ Nothing g = aError "dice input must be an integer" g
-applyDice (Just n) (Just s) g = first (fmap fromIntegral) $ rollDice n s g
+applyDice Nothing _ = aError "dice input must be an integer"
+applyDice _ Nothing = aError "dice input must be an integer"
+applyDice (Just n) (Just s) = first (fmap fromIntegral) . rollDice n s
 
 applyDiceRemove :: Maybe Int -> Maybe Int -> Maybe Int -> Bool -> StdGen -> (ErrorProne Double, StdGen)
-applyDiceRemove Nothing _ _ _ g = aError "dice input must be an integer" g
-applyDiceRemove _ Nothing _ _ g = aError "dice input must be an integer" g
-applyDiceRemove _ _ Nothing _ g = aError "dice input must be an integer" g
-applyDiceRemove (Just n) (Just s) (Just r) t g = first (fmap fromIntegral) $ rollAndRemoveDice n s r t g
+applyDiceRemove Nothing _ _ _ = aError "dice input must be an integer"
+applyDiceRemove _ Nothing _ _ = aError "dice input must be an integer"
+applyDiceRemove _ _ Nothing _ = aError "dice input must be an integer"
+applyDiceRemove (Just n) (Just s) (Just r) t = first (fmap fromIntegral) . rollAndRemoveDice n s r t
 
 applyOperator :: Char -> [Double] -> StdGen -> (ErrorProne Double, StdGen)
 applyOperator _ [] g = aError "too few operands" g
