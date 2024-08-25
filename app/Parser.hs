@@ -104,8 +104,8 @@ parseNUD :: RemTokens -> Int -> ParseReturn
 parseNUD [] prec = Left "empty input"
 parseNUD (x : xs) prec = parselets x xs >>= uncurry (parseLED prec)
 
-parseTernary :: Char -> RemTokens -> TokenTree -> Int -> ParseReturn
-parseTernary o l@(x : xs) tree1 prec = do
+parseTernary :: Char -> Int -> RemTokens -> TokenTree -> ParseReturn
+parseTernary o prec l@(x : xs) tree1 = do
   (opPrec, opAsc) <- errorMessege (lookup o infixOperatorPrecedence) ("unknown ternary operator '" ++ [o] ++ "'")
   if opPrec < prec || (opPrec == prec && opAsc)
     then Right (l, tree1)
@@ -121,8 +121,8 @@ parseTernary o l@(x : xs) tree1 prec = do
           (rem3, tree3) <- parseNUD (tail rem2) opPrec
           parseLED prec rem3 (Branch (head rem2) [tree1, tree2, tree3])
 
-parseInfix :: Char -> RemTokens -> TokenTree -> Int -> ParseReturn
-parseInfix o l@(x : xs) t p = do
+parseInfix :: Char -> Int -> RemTokens -> TokenTree -> ParseReturn
+parseInfix o p l@(x : xs) t = do
   (opPrec, opAsc) <- errorMessege (lookup o infixOperatorPrecedence) ("unknown infix operator '" ++ [o] ++ "'")
   if opPrec < p || (opPrec == p && opAsc)
     then Right (l, t)
@@ -130,26 +130,26 @@ parseInfix o l@(x : xs) t p = do
       (rem, tree') <- parseNUD xs opPrec
       parseLED p rem (Branch x [t, tree'])
 
-parsePostfix :: Char -> RemTokens -> TokenTree -> Int -> ParseReturn
-parsePostfix o l@(x : xs) t p = do
+parsePostfix :: Char -> Int -> RemTokens -> TokenTree -> ParseReturn
+parsePostfix o p l@(x : xs) t = do
   opPrec <- errorMessege (lookup o postfixOperatorPrecedence) ("unknown postfix operator '" ++ [o] ++ "'")
   if opPrec < p
     then Right (l, t)
     else do
       parseLED p xs (Branch x [t])
 
-parseOperator :: Char -> RemTokens -> TokenTree -> Int -> ParseReturn
-parseOperator o l t p
-  | o `elem` map fst ternaryOperators = parseTernary o l t p
-  | o `elem` map fst infixOperatorPrecedence = parseInfix o l t p
-  | o `elem` map fst postfixOperatorPrecedence = parsePostfix o l t p
-  | otherwise = Right (l, t)
+parseOperator :: Char -> Int -> RemTokens -> TokenTree -> ParseReturn
+parseOperator o p
+  | o `elem` map fst ternaryOperators = parseTernary o p
+  | o `elem` map fst infixOperatorPrecedence = parseInfix o p
+  | o `elem` map fst postfixOperatorPrecedence = parsePostfix o p
+  | otherwise = curry Right
 
 parseLED :: Int -> RemTokens -> TokenTree -> ParseReturn
 parseLED p [] t = Right ([], t)
 parseLED p l@(x : xs) t = case x of
-  StartParen _ -> parseInfix '*' (Operator '*' : l) t p
-  Operator c -> parseOperator c l t p
+  StartParen _ -> parseInfix '*' p (Operator '*' : l) t
+  Operator c -> parseOperator c p l t
   _ -> Right (l, t)
 
 parse :: ErrorProne [Token] -> ErrorProne TokenTree
