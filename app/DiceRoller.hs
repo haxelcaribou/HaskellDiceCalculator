@@ -25,6 +25,13 @@ data Options = Options
     optEval :: Maybe String
   }
 
+toIntegral :: (RealFrac a, Integral b) => a -> Maybe b
+toIntegral r
+  | fromIntegral i == r = Just i
+  | otherwise = Nothing
+  where
+    i = truncate r
+
 applyIfTrue :: (a -> a) -> Bool -> a -> a
 applyIfTrue f True x = f x
 applyIfTrue _ False x = x
@@ -47,7 +54,9 @@ calculate = evaluate . parse . tokenize
 calcToString :: Options -> ErrorProne Double -> String
 calcToString o (Left e) =
   colorText o Dull Red (boldText o "error: ") ++ e
-calcToString o (Right n) = boldText o $ show n
+calcToString o (Right n) = case toIntegral n of
+  Nothing -> boldText o $ show n
+  Just i -> boldText o $ show i
 
 getAnswer :: Options -> String -> StdGen -> (String, StdGen)
 getAnswer o input gen = first (calcToString o) (calculate (shortcuts input) gen)
