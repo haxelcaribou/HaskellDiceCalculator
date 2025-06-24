@@ -13,8 +13,5 @@ toParen c
 
 data Token = Operator Char | Function String | Number Double | StartParen Paren | Comma | EndParen Paren deriving (Show, Eq)
 
--- operatorCharacters :: [Char]
--- operatorCharacters = ['~', '+', '-', '*', '/', '%', '^', '!', 'd', 'b', 't']
-
 parenSymbols :: [(Char, Char)]
 parenSymbols = [('(', ')'), ('[', ']'), ('{', '}')]

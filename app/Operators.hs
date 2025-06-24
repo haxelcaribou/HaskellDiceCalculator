@@ -20,7 +20,7 @@ infixOperators =
     ('/', (2, True)),
     ('%', (2, True)),
     ('^', (4, False)),
-    ('d', (5, True))
+    ('d', (6, True))
   ]
 
 prefixOperators :: [(Char, Int)]
@@ -28,12 +28,13 @@ prefixOperators =
   [ ('+', 3),
     ('-', 3),
     ('~', 3),
-    ('d', 5)
+    ('d', 6)
   ]
 
 postfixOperators :: [(Char, Int)]
 postfixOperators =
-  [('!', 4)
+  [ ('!', 4)
+  -- ('%', 5)
   ]
 
 operatorCharacters = union (map fst ternaryOperators) $ union (foldl1 union (map (thd . snd) ternaryOperators)) $ union (map fst infixOperators) $ union (map fst prefixOperators) (map fst postfixOperators)

@@ -31,7 +31,6 @@ executable DiceCalculator
     -- other-extensions:
     build-depends:
         base >= 4.16.4.0,
-        -- base ^>= 4.16.4.0,
         ansi-terminal >= 0.11.4 && < 1.2,
         haskeline >= 0.8.2 && < 0.9,
         optparse-applicative >= 0.17.1 && < 0.19,

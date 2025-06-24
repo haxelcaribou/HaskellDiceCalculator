@@ -1,8 +1,8 @@
 module Tokenizer (tokenize) where
 
+import Data.List (intersect, (\\))
 import Error
 import Token
-import Data.List (intersect, (\\))
 
 letters :: [Char]
 letters = ['a' .. 'z']

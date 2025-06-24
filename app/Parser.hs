@@ -2,9 +2,9 @@ module Parser (parse) where
 
 import Data.Bifunctor (first, second)
 import Error
+import Operators
 import Token
 import Tree
-import Operators
 
 type RemTokens = [Token]
 
