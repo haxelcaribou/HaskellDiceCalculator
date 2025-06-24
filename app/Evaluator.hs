@@ -71,7 +71,7 @@ applyDiceRemove _ _ Nothing _ = aError "dice input must be an integer"
 applyDiceRemove (Just n) (Just s) (Just r) t = first (fmap fromIntegral) . rollAndRemoveDice n s r t
 
 applyOperator :: Char -> [Double] -> StdGen -> (ErrorProne Double, StdGen)
-applyOperator _ [] = aError "too few operands"
+applyOperator o [] = aError ("'" ++ [o] ++ "' has too few operands")
 applyOperator o [a, b, c]
   | o == 't' = applyDiceRemove (toIntegral a) (toIntegral b) (toIntegral c) True
   | o == 'b' = applyDiceRemove (toIntegral a) (toIntegral b) (toIntegral c) False
@@ -83,7 +83,7 @@ applyOperator o [a, b]
   | o == '^' = aDefault (a ** b)
   | o == '%' = (errorMessege (intFuncDouble' mod' a b) "mod input must be integers with a nonzero dividend",)
   | o == 'd' = applyDice (toIntegral a) (toIntegral b)
-  | otherwise = aError "unknown operator"
+  | otherwise = aError ("unknown operator '" ++ [o] ++ "'")
 applyOperator o [a]
   | o == '+' = aDefault a
   | o == '-' = aDefault (-a)
@@ -91,14 +91,14 @@ applyOperator o [a]
   | o == 'd' = applyDice (Just 1) (toIntegral a)
   -- \| o == '%' = aDefault (a/100)
   | o == '!' = (errorMessege (intFuncSingle' fac a) "factorial input must be a positive integer",)
-applyOperator _ xs = aError "too many operands"
+applyOperator o xs = aError ("'" ++ [o] ++ "' has too many operands")
 
 applyFunction :: String -> [Double] -> StdGen -> (ErrorProne Double, StdGen)
 applyFunction o []
   | o == "pi" = aDefault pi
   | o == "tau" = aDefault (pi * 2)
   | o == "e" = aDefault (exp 1)
-  | otherwise = aError "unknown constant"
+  | otherwise = aError ("unknown constant '" ++ o ++ "'")
 applyFunction o [x]
   | o == "negate" = aDefault (negate x)
   | o == "abs" = aDefault (abs x)
@@ -131,11 +131,13 @@ applyFunction o [a, b]
   | o == "pow" = aDefault (a ** b)
   | o == "log" = aDefault (logBase b a)
 applyFunction o l@(x : xs)
+  | o == "add" = aDefault (sum l)
+  | o == "mult" = aDefault (product l)
   | o == "sum" = aDefault (sum l)
   | o == "prod" = aDefault (product l)
   | o == "min" = aDefault (minimum l)
   | o == "max" = aDefault (maximum l)
-  | otherwise = aError "unknown function"
+  | otherwise = aError ("function '" ++ o ++ "' is unknown or has the wrong number of arguments")
 
 -- evaluate :: ErrorProne (Tree Token) -> StdGen -> ErrorProne Double
 -- evaluate t g = fst <$> evaluate' t g
