@@ -1,4 +1,6 @@
-module Token (Token (Operator, Function, Number, StartParen, Comma, EndParen), Paren, toParen, operatorSymbols, operatorLetters, parenSymbols) where
+module Token (Token (Operator, Function, Number, StartParen, Comma, EndParen), Paren, toParen, operatorCharacters, parenSymbols) where
+
+import Operators
 
 data Paren = RoundBracket | SquareBracket | CurlyBrace deriving (Show, Eq)
 
@@ -11,11 +13,8 @@ toParen c
 
 data Token = Operator Char | Function String | Number Double | StartParen Paren | Comma | EndParen Paren deriving (Show, Eq)
 
-operatorSymbols :: [Char]
-operatorSymbols = ['~', '+', '-', '*', '/', '%', '^', '!']
-
-operatorLetters :: [Char]
-operatorLetters = ['d', 'b', 't']
+-- operatorCharacters :: [Char]
+-- operatorCharacters = ['~', '+', '-', '*', '/', '%', '^', '!', 'd', 'b', 't']
 
 parenSymbols :: [(Char, Char)]
 parenSymbols = [('(', ')'), ('[', ']'), ('{', '}')]

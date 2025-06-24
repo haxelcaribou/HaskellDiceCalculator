@@ -2,12 +2,17 @@ module Tokenizer (tokenize) where
 
 import Error
 import Token
+import Data.List (intersect, (\\))
 
 letters :: [Char]
 letters = ['a' .. 'z']
 
 digits :: [Char]
 digits = ['0' .. '9']
+
+operatorLetters = intersect operatorCharacters letters
+
+operatorSymbols = operatorCharacters \\ letters
 
 pullDouble :: String -> String -> ErrorProne (Double, String)
 pullDouble f [] = Right (read f :: Double, "")

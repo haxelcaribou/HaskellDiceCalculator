@@ -25,12 +25,13 @@ executable DiceCalculator
     main-is:          DiceRoller.hs
 
     -- Modules included in this executable, other than Main.
-    other-modules:    Dice, Error, Evaluator, Parser, Token, Tokenizer, Tree
+    other-modules:    Dice, Error, Evaluator, Operators, Parser, Token, Tokenizer, Tree
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
     build-depends:
-        base ^>= 4.16.4.0,
+        base >= 4.16.4.0,
+        -- base ^>= 4.16.4.0,
         ansi-terminal >= 0.11.4 && < 1.2,
         haskeline >= 0.8.2 && < 0.9,
         optparse-applicative >= 0.17.1 && < 0.19,

@@ -89,7 +89,7 @@ applyOperator o [a]
   | o == '-' = aDefault (-a)
   | o == '~' = aDefault (-a)
   | o == 'd' = applyDice (Just 1) (toIntegral a)
-  | o == '%' = applyDice (toIntegral a) (Just 100)
+  | o == '%' = applyDice (toIntegral a) (Just 100) -- change this to be 'a/100' instead of percentage dice
   | o == '!' = (errorMessege (intFuncSingle' fac a) "factorial input must be a positive integer",)
 applyOperator _ xs = aError "too many operands"
 
