@@ -132,15 +132,12 @@ applyFunction o [a, b]
   | o == "log" = aDefault (logBase b a)
 applyFunction o l@(x : xs)
   | o == "add" = aDefault (sum l)
-  | o == "mult" = aDefault (product l)
   | o == "sum" = aDefault (sum l)
   | o == "prod" = aDefault (product l)
+  | o == "mult" = aDefault (product l)
   | o == "min" = aDefault (minimum l)
   | o == "max" = aDefault (maximum l)
-  | otherwise = aError ("function '" ++ o ++ "' is unknown or has the wrong number of arguments")
-
--- evaluate :: ErrorProne (Tree Token) -> StdGen -> ErrorProne Double
--- evaluate t g = fst <$> evaluate' t g
+  | otherwise = aError ("function '" ++ o ++ "' is unrecognized")
 
 evaluate :: ErrorProne (Tree Token) -> StdGen -> (ErrorProne Double, StdGen)
 evaluate (Left e) = (Left e,)
